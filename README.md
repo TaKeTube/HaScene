@@ -80,4 +80,4 @@ Output: `([Shape2D],[Shape3D])`
 
 Input: `([Shape2D],[Shape3D])`
 
-Output: PPM image
+Output: Console Output
