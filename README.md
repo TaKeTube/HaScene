@@ -18,3 +18,67 @@ Scene editing & previewing will be implemented using [the brick library](https:/
 A ray tracer is a kind of renderer that render 3D scene using the ray tracing algorithm (which is a recursive algorithm, and we believe it has an affinity with Haskell). It is the cornerstone of modern photorealistic rendering. Considering the amount of work required to implement the scene editor, we plan to use the open-source ray tracer on GitHub and write the interface to the editor. If we have extra time, we will implement the ray tracer ourselves.
 
 **PS:** Two members of our team are familiar with computer graphics, so we think it is not difficult for the team to grasp the principles behind the algorithm. However, since Haskell as a functional programming language is very different from object-oriented programming languages such as C++, we cannot guarantee that the final result of the project will be exactly as described in the proposal.
+
+### API
+
+#### Shape
+
+```haskell
+data Point = Point a
+	deriving (Show)
+makeLenses ''Point
+
+data Surface f =
+    Surface
+    { _normal_x :: !f
+    , _normal_y :: !f
+    , _normal_z :: !f
+    } deriving (Show)
+makeLenses ''Surface
+
+data Triangle f =
+    Triangle
+    { _triangle_vertices :: {-# UNPACK #-} !(V3 (Point V3 f))
+    } deriving (Show)
+makeLenses ''Triangle
+
+data Block f =
+    Block
+    { _block_pos :: !(Point V3 f)
+    , _block_edges_len :: !(V3 f)
+    } deriving (Show)
+makeLenses ''Block
+
+data Sphere f =
+    Sphere
+    { _sphere_center :: !(Point V3 f)
+    , _sphere_radius :: !f
+    } deriving (Show)
+makeLenses ''Sphere
+
+type Shape2D = Surface | Triangle
+type Shape3D = Block | Sphere
+```
+
+
+
+#### FrontEnd
+
+Input: the config file
+
+```c
+0 0 -5              // the init camera position
+0 1 -1              // the init light position
+3	                // the number of Objects
+Sphere 1 2 3 1      // type, args
+Block 1 2 3 4 4
+Surface 1 2 3
+```
+
+Output: `([Shape2D],[Shape3D])`
+
+#### Backend
+
+Input: `([Shape2D],[Shape3D])`
+
+Output: PPM image
