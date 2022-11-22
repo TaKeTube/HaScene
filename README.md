@@ -30,9 +30,8 @@ makeLenses ''Point
 
 data Surface f =
     Surface
-    { _normal_x :: !f
-    , _normal_y :: !f
-    , _normal_z :: !f
+    { 
+        _normal :: !(V3 f)
     } deriving (Show)
 makeLenses ''Surface
 
