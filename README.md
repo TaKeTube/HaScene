@@ -53,7 +53,7 @@ data Polyhedron f =
     } deriving (Show)
 makeLenses ''Polyhedron
 
-type Shape = Surface | Triangle | Sphere | Polyhedron
+type Shape = Surface | Sphere | Polyhedron
 ```
 
 
