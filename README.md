@@ -30,8 +30,7 @@ makeLenses ''Point
 
 data Surface f =
     Surface
-    { 
-        _normal :: !(V3 f)
+    { _normal :: !(V3 f)
     } deriving (Show)
 makeLenses ''Surface
 
@@ -41,13 +40,6 @@ data Triangle f =
     } deriving (Show)
 makeLenses ''Triangle
 
-data Block f =
-    Block
-    { _block_pos :: !(Point V3 f)
-    , _block_edges_len :: !(V3 f)
-    } deriving (Show)
-makeLenses ''Block
-
 data Sphere f =
     Sphere
     { _sphere_center :: !(Point V3 f)
@@ -55,8 +47,13 @@ data Sphere f =
     } deriving (Show)
 makeLenses ''Sphere
 
-type Shape2D = Surface | Triangle
-type Shape3D = Block | Sphere
+data Polyhedron f =
+    Polyhedron
+    { _obj_triangles :: ![Traiangle f]
+    } deriving (Show)
+makeLenses ''Polyhedron
+
+type Shape = Surface | Triangle | Sphere | Polyhedron
 ```
 
 
@@ -68,16 +65,21 @@ Input: the config file
 ```c
 0 0 -5              // the init camera position
 0 1 -1              // the init light position
-3	                // the number of Objects
+3                   // the number of Objects
 Sphere 1 2 3 1      // type, args
-Block 1 2 3 4 4
-Surface 1 2 3
+Block 1 2 3 4 4 90 90 90
+FileObj filename.obj 1 1 2 3 90 90 90
 ```
 
-Output: `([Shape2D],[Shape3D])`
+Output: `[Shape]`
 
 #### Backend
 
-Input: `([Shape2D],[Shape3D])`
+Input: `[Shape]`
 
 Output: Console Output
+
+### Modified Goal
+Pending: the ray tracer.
+
+A new feature: the camera can be moved by the keyboard.
