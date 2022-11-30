@@ -44,11 +44,13 @@ type Coord = V3 Double
 -- | Triangle in location context
 type Triangle = V3 Coord
 
-newtype Object = Object
+data Polygon = Polygon
   { _triangles :: [Triangle]
+  , _name      :: String
+  , _id        :: Int
   }
   deriving (Eq, Show)
-makeLenses ''Object
+makeLenses ''Polygon
 
 data Camera = Camera
   { _pos   :: Coord
@@ -62,7 +64,7 @@ data Direction = Left | Right | Back | Forward
 
 -- | Game state
 data Game = Game
-  { _objects  :: [Object]
+  { _objects  :: [Polygon]
   , _camera   :: Camera
   , _initFile :: String
   }
@@ -100,7 +102,7 @@ boardWidth, boardHeight :: Int
 boardWidth = 10
 boardHeight = 20
 
-defaultScene :: String -> [Object]
+defaultScene :: String -> [Polygon]
 defaultScene filename = []
 
 defaultCamera :: Camera
