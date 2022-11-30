@@ -77,6 +77,7 @@ handleEvent ui (VtyEvent (V.EvKey V.KRight      [])) = exec (move Right) ui
 handleEvent ui (VtyEvent (V.EvKey V.KLeft       [])) = exec (move Left) ui
 handleEvent ui (VtyEvent (V.EvKey V.KDown       [])) = exec (move Back) ui
 handleEvent ui (VtyEvent (V.EvKey V.KUp         [])) = exec (move Forward) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt ui
 handleEvent ui _                                     = continue ui
 
 -- | This common execution function is used for all game user input except hard
@@ -122,18 +123,18 @@ drawUI ui =
       ]
   ]
 
+showObjList::[Polygon]->[Widget Name]
+showObjList = map f
+  where
+    f a   = padLeftRight 1 $ str (show a)
+
 drawStats :: Game -> Widget Name
 drawStats g =
   hLimit 22
     $ withBorderStyle BS.unicodeBold
     $ B.borderWithLabel (str "Obj Lists")
     $ vBox
-        [ drawStat "Obj1" 1
-        , padTop (Pad 1) $ drawStat "Obj2" 1
-        ]
-
-drawStat :: String -> Int -> Widget Name
-drawStat s n = padLeftRight 1 $ str s <+> padLeft Max (str $ show n)
+      $ showObjList (g ^. objects) ++ [str "press \"q\" to quit"]
 
 theMap :: AttrMap
 theMap = attrMap

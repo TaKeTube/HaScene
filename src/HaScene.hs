@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs      #-}
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE TemplateHaskell   #-}
@@ -11,9 +12,11 @@ module HaScene
   , execTetris
   , evalTetris
   , move
+  -- data structures
   , Game(..)
   , HaScene
   , Direction(..)
+  , Polygon(..)
   -- Lenses
   , camera, objects, initFile
   -- Constants
@@ -47,10 +50,13 @@ type Triangle = V3 Coord
 data Polygon = Polygon
   { _triangles :: [Triangle]
   , _name      :: String
-  , _id        :: Int
   }
-  deriving (Eq, Show)
+  deriving (Eq)
 makeLenses ''Polygon
+
+instance Show Polygon where
+  show :: Polygon -> String
+  show a = a ^. name
 
 data Camera = Camera
   { _pos   :: Coord
@@ -103,7 +109,11 @@ boardWidth = 10
 boardHeight = 20
 
 defaultScene :: String -> [Polygon]
-defaultScene filename = []
+defaultScene filename = [
+    Polygon {_triangles=[],_name="OBJ1"}
+  , Polygon {_triangles=[],_name="OBJ2"}
+  , Polygon {_triangles=[],_name="OBJ3"}
+  ]
 
 defaultCamera :: Camera
 defaultCamera = Camera
