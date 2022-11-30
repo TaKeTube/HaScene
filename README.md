@@ -24,36 +24,33 @@ A ray tracer is a kind of renderer that render 3D scene using the ray tracing al
 #### Shape
 
 ```haskell
-data Point = Point a
-	deriving (Show)
-makeLenses ''Point
+-- | Coordinates
+type Coord = V3 Double
 
-data Surface f =
-    Surface
-    { _normal :: !(V3 f)
-    } deriving (Show)
-makeLenses ''Surface
+-- | Triangle in location context
+type Triangle = V3 Coord
 
-data Triangle f =
-    Triangle
-    { _triangle_vertices :: {-# UNPACK #-} !(V3 (Point V3 f))
-    } deriving (Show)
-makeLenses ''Triangle
+newtype Object = Object
+  { _triangles :: [Triangle]
+  }
+  deriving (Eq, Show)
+makeLenses ''Object
 
-data Sphere f =
-    Sphere
-    { _sphere_center :: !(Point V3 f)
-    , _sphere_radius :: !f
-    } deriving (Show)
-makeLenses ''Sphere
+data Camera = Camera
+  { _pos   :: Coord
+  , _angle :: Coord
+  }
+  deriving (Eq, Show)
+makeLenses ''Camera
 
-data Polyhedron f =
-    Polyhedron
-    { _obj_triangles :: ![Traiangle f]
-    } deriving (Show)
-makeLenses ''Polyhedron
-
-type Shape = Surface | Sphere | Polyhedron
+-- | Game state
+data Game = Game
+  { _objects  :: [Object]
+  , _camera   :: Camera
+  , _initFile :: String
+  }
+  deriving (Eq, Show)
+makeLenses ''Game
 ```
 
 
@@ -82,4 +79,4 @@ Output: Console Output
 ### Modified Goal
 Pending: the ray tracer.
 
-A new feature: the camera can be moved by the keyboard.
+ new feature: the camera can be moved by the keyboard.
