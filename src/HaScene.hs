@@ -42,7 +42,7 @@ import           System.Random             (getStdRandom, randomR)
 
 
 -- | Coordinates
-type Coord = V3 Float
+type Coord = V3 Double
 
 -- | Triangle in location context
 type Triangle = V3 Coord
@@ -93,7 +93,7 @@ execTetris m = runIdentity . execStateT m
 class Translatable s where
   translate :: Direction -> s -> s
   translate = translateBy 1
-  translateBy :: Float -> Direction -> s -> s
+  translateBy :: Double -> Direction -> s -> s
 
   translateR :: RDirection -> s -> s
   translateR = translateRBy 1
