@@ -127,7 +127,7 @@ drawUI ui =
       ]
   ]
 
-showObjList::[Polygon]->[Widget Name]
+showObjList::[Mesh]->[Widget Name]
 showObjList = map f
   where
     f a   = padLeftRight 1 $ str (show a)

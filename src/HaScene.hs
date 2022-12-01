@@ -16,7 +16,7 @@ module HaScene
   , Game(..)
   , HaScene
   , Direction(..), RDirection(..)
-  , Polygon(..)
+  , Mesh(..)
   -- Lenses
   , camera, objects, initFile
   -- Constants
@@ -42,20 +42,20 @@ import           System.Random             (getStdRandom, randomR)
 
 
 -- | Coordinates
-type Coord = V3 Double
+type Coord = V3 Float
 
 -- | Triangle in location context
 type Triangle = V3 Coord
 
-data Polygon = Polygon
+data Mesh = Mesh
   { _triangles :: [Triangle]
   , _name      :: String
   }
   deriving (Eq)
-makeLenses ''Polygon
+makeLenses ''Mesh
 
-instance Show Polygon where
-  show :: Polygon -> String
+instance Show Mesh where
+  show :: Mesh -> String
   show a = a ^. name
 
 data Camera = Camera
@@ -72,7 +72,7 @@ data RDirection = RLeft | RRight | RUp | RDown
 
 -- | Game state
 data Game = Game
-  { _objects  :: [Polygon]
+  { _objects  :: [Mesh]
   , _camera   :: Camera
   , _initFile :: String
   }
@@ -93,7 +93,7 @@ execTetris m = runIdentity . execStateT m
 class Translatable s where
   translate :: Direction -> s -> s
   translate = translateBy 1
-  translateBy :: Double -> Direction -> s -> s
+  translateBy :: Float -> Direction -> s -> s
 
   translateR :: RDirection -> s -> s
   translateR = translateRBy 1
@@ -118,11 +118,11 @@ boardWidth, boardHeight :: Int
 boardWidth = 10
 boardHeight = 20
 
-defaultScene :: String -> [Polygon]
+defaultScene :: String -> [Mesh]
 defaultScene filename = [
-    Polygon {_triangles=[],_name="OBJ1"}
-  , Polygon {_triangles=[],_name="OBJ2"}
-  , Polygon {_triangles=[],_name="OBJ3"}
+    Mesh {_triangles=[],_name="OBJ1"}
+  , Mesh {_triangles=[],_name="OBJ2"}
+  , Mesh {_triangles=[],_name="OBJ3"}
   ]
 
 defaultCamera :: Camera
