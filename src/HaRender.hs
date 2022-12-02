@@ -29,36 +29,29 @@ sortTriangle (V3 v0 v1 v2) = let
     [v0', v1', v2'] = sortBy (\(V3 _ y1 _) (V3 _ y2 _) -> compare y1 y2) [v0, v1, v2]
     in V3 v0' v1' v2'
 
-eulerMatrix :: V3 Float -> M33 Float
-eulerMatrix (V3 a b c) = let
-    cosa = cos a
-    sina = sin a
-    cosb = cos b
-    sinb = sin b
-    cosc = cos c
-    sinc = sin c
-    ma = V3 (V3 cosa    (-sina) 0      )
-            (V3 sina    cosa    0      )
-            (V3 0       0       1      )
-    mb = V3 (V3 1       0       0      )
-            (V3 0       cosb    (-sinb))
-            (V3 0       sinb    cosb   )
-    mc = V3 (V3 cosc    (-sinc) 0      )
-            (V3 sinc    cosc    0      )
-            (V3 0       0       1      )
-    in mc !*! mb !*! mc
+-- viewMatrix :: Camera -> M44 Float
+-- viewMatrix cam = let
+--     rotM = eulerMatrix (_angle cam)
+--     invRotM = transpose rotM
+--     pos = _pos cam
+--     V3 vx vy vz = - (invRotM !* pos)
+--     V3 (V3 mxx mxy mxz) (V3 myx myy myz) (V3 mzx mzy mzz) = invRotM
+--     in V4   (V4 mxx mxy mxz vx)
+--             (V4 myx myy myz vy)
+--             (V4 mzx mzy mzz vz)
+--             (V4 0   0   0   1 )
+
 
 viewMatrix :: Camera -> M44 Float
 viewMatrix cam = let
-    rotM = eulerMatrix (_angle cam)
-    invRotM = transpose rotM
+    dir = _dir cam
+    up = _up cam
     pos = _pos cam
-    V3 vx vy vz = - (invRotM !* pos)
-    V3 (V3 mxx mxy mxz) (V3 myx myy myz) (V3 mzx mzy mzz) = invRotM
-    in V4   (V4 mxx mxy mxz vx)
-            (V4 myx myy myz vy)
-            (V4 mzx mzy mzz vz)
-            (V4 0   0   0   1 )
+    right = normalize (cross up dir)
+    in  transpose V4 (V4 (right^._x)   (right^._y)  (right^._z)    0)
+          (V4 (up^._x)      (up^._y)     (up^._z)      0)
+          (V4 (dir^._x)     (dir^._y)    (dir^._z)      0)
+          (V4 (pos^._x)     (pos^._y)    (pos^._z)      1)
 
 projMatrix :: Float -> Float -> Float -> Float -> M44 Float
 projMatrix fov aspectRatio zNear zFar = let
