@@ -33,19 +33,37 @@ sortTriangle (V3 v0 v1 v2) = let
 --             (V4 mzx mzy mzz vz)
 --             (V4 0   0   0   1 )
 
-
 viewMatrix :: Camera -> M44 Float
 viewMatrix cam = let
     dir = normalize $ _dir cam
     up = normalize $ _up cam
     pos = _pos cam
     lookat = lookAt pos dir up
-    projection = perspective 60 (16/9) 0.1 50
-    in projection !*! lookat
-    -- in transpose V4 (V4 (right^._x)   (right^._y)  (right^._z)    0)
-    --       (V4 (up'^._x)     (up'^._y)    (up'^._z)      0)
-    --       (V4 (dir^._x)     (dir^._y)    (dir^._z)      0)
-    --       (V4 (pos^._x)     (pos^._y)    (pos^._z)      1)
+    -- projection = perspective 60 (16/9) 0.1 50
+    in lookat
+    -- -- in transpose V4 (V4 (right^._x)   (right^._y)  (right^._z)    0)
+    -- --       (V4 (up'^._x)     (up'^._y)    (up'^._z)      0)
+    -- --       (V4 (dir^._x)     (dir^._y)    (dir^._z)      0)
+    -- --       (V4 (pos^._x)     (pos^._y)    (pos^._z)      1)
+
+-- eulerMatrix :: V3 Float -> M33 Float
+-- eulerMatrix (V3 a b c) = let
+--     cosa = cos a
+--     sina = sin a
+--     cosb = cos b
+--     sinb = sin b
+--     cosc = cos c
+--     sinc = sin c
+--     ma = V3 (V3 cosa    (-sina) 0      )
+--             (V3 sina    cosa    0      )
+--             (V3 0       0       1      )
+--     mb = V3 (V3 1       0       0      )
+--             (V3 0       cosb    (-sinb))
+--             (V3 0       sinb    cosb   )
+--     mc = V3 (V3 cosc    (-sinc) 0      )
+--             (V3 sinc    cosc    0      )
+--             (V3 0       0       1      )
+--     in mc !*! mb !*! ma
 
 projMatrix :: Float -> Float -> Float -> Float -> M44 Float
 projMatrix fov aspectRatio zNear zFar = let
@@ -79,7 +97,8 @@ fragShader :: V3 Float -> V3 Float -> Char
 fragShader light n = let
     colorMap = ".,-~:;!*=#$@"
     colorLen = length colorMap - 1
-    idx = round (int2Float colorLen * (dot light n * 0.5 + 0.5))
+    -- idx = round (int2Float colorLen * (max 0 (dot (-light) n)))
+    idx = round (int2Float colorLen * (dot (-light) n * 0.5 + 0.5))
     in colorMap !! idx
 
 perspectInterp :: V3 Float -> V3 Float -> V3 Float -> Float
@@ -134,8 +153,9 @@ rasterize w h t@(V3 v0 v1 v2) = let
         beryCoord = berycentric2D x y t
         in perspectInterp (V3 zMin zMid zMax) beryCoord (V3 zMin zMid zMax)
     -- Just Use Flat Shader
-    n = normalize (cross v0 v1)
-    color = fragShader (normalize (V3 (-1) 1 0)) n
+    -- n = normalize $ cross (normalize $ v0-v2) (normalize $ v1-v2)
+    n = normalize $ cross v0 v1
+    color = fragShader (normalize (V3 0 0 (-1))) n
     -- index range of y
     yyd = y2yy (yMin + dy / 2)
     yyu = y2yy (yMax - dy / 2)
@@ -158,5 +178,5 @@ render w h ms cam = elems $ runSTUArray $ do
             else do return ()
         ) pixels
     forM_ [0..h-1] $ \j -> do
-        writeArray fbuf (j,w-1) '\n'
+        writeArray fbuf (j,w) '\n'
     return fbuf

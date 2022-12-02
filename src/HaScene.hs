@@ -115,11 +115,11 @@ execHaScene m = runIdentity . execStateT m
 -- 'shift' concerns safe translations with boundaries
 class Translatable s where
   translate :: Direction -> s -> s
-  translate = translateBy 1
+  translate = translateBy 0.05
   translateBy :: Float -> Direction -> s -> s
 
   translateR :: RDirection -> s -> s
-  translateR = translateRBy 1
+  translateR = translateRBy 0.01
   translateRBy :: Float -> RDirection -> s -> s
 
 
