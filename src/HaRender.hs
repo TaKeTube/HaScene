@@ -12,10 +12,7 @@ import           Data.List          (sortBy)
 
 import           Control.Lens       hiding (Empty)
 import           GHC.Float
-import           Linear.Matrix
-import           Linear.Metric
-import           Linear.V3
-import           Linear.V4
+import           Linear
 
 import           HaScene
 
@@ -44,14 +41,16 @@ sortTriangle (V3 v0 v1 v2) = let
 
 viewMatrix :: Camera -> M44 Float
 viewMatrix cam = let
-    dir = _dir cam
-    up = _up cam
+    dir = normalize $ _dir cam
+    up = normalize $ _up cam
     pos = _pos cam
-    right = normalize (cross up dir)
-    in  transpose V4 (V4 (right^._x)   (right^._y)  (right^._z)    0)
-          (V4 (up^._x)      (up^._y)     (up^._z)      0)
-          (V4 (dir^._x)     (dir^._y)    (dir^._z)      0)
-          (V4 (pos^._x)     (pos^._y)    (pos^._z)      1)
+    lookat = lookAt pos dir up
+    projection = perspective 60 (16/9) 0.1 50
+    in projection !*! lookat
+    -- in transpose V4 (V4 (right^._x)   (right^._y)  (right^._z)    0)
+    --       (V4 (up'^._x)     (up'^._y)    (up'^._z)      0)
+    --       (V4 (dir^._x)     (dir^._y)    (dir^._z)      0)
+    --       (V4 (pos^._x)     (pos^._y)    (pos^._z)      1)
 
 projMatrix :: Float -> Float -> Float -> Float -> M44 Float
 projMatrix fov aspectRatio zNear zFar = let

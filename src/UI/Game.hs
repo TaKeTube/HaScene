@@ -84,7 +84,7 @@ handleEvent ui (VtyEvent (V.EvKey (V.KChar 'a') [])) =
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 's') [])) =
   if ui ^. isEdit then continue ui else exec (move Back) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'd') [])) =
-  if ui ^. isEdit then continue ui else exec (move Left) ui
+  if ui ^. isEdit then continue ui else exec (move Right) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'W') [])) =
   if ui ^. isEdit then continue ui else exec (move HaScene.Up) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'S') [])) =
@@ -130,11 +130,11 @@ restart ui = do
 -- Drawing
 drawUI :: UI -> [Widget Name]
 drawUI ui =
-  [ C.vCenter $ vLimit 22 $ hBox
+  [ C.vCenter $ vLimit 80 $ hBox
       [ padLeft Max $ padRight (Pad 2) $ drawStats (ui ^. selected) (ui ^. game)
-      , vLimit 40
+      , vLimit 80
           $ withBorderStyle BS.unicodeBold
-          $ B.borderWithLabel (str "Scene") (str $ HaRender.render 80 40 (ui ^. (game . objects)) (ui ^. (game . camera)))
+          $ B.borderWithLabel (str "Scene") (str $ HaRender.render 80 45 (ui ^. (game . objects)) (ui ^. (game . camera)))
       ]
   ]
 
@@ -156,7 +156,7 @@ drawStats selected g =
     $ withBorderStyle BS.unicodeBold
     $ B.borderWithLabel (str "Obj Lists")
     $ vBox
-      $ showObjList selected (zip [0..] (g ^. objects)) ++ [str "press \"q\" to quit"]
+      $ showObjList selected (zip [0..] (g ^. objects)) ++ [str "press \"q\" to quit"] ++ [str $ show $ _pos $  g ^. camera] ++ [str $ show $ _dir $  g ^. camera] ++ [str $ show $ _up $  g ^. camera]
 
 theMap :: AttrMap
 theMap = attrMap

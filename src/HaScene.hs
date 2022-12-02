@@ -150,14 +150,14 @@ defaultScene :: String -> IO [Mesh]
 defaultScene filename = do
   obj1 <- buildMesh "src/models/hat.obj" "hat"
   obj2 <- buildMesh "src/models/cube.obj" "cube"
-  return [obj1]
+  return [obj1,obj2]
 
 defaultCamera :: Camera
 defaultCamera = Camera
   {
-    _pos = V3 0 5 5
-  , _dir = V3 0 (-1) (-1)
-  , _up  = V3 0 1 1
+    _pos = V3 0 0 3
+  , _dir = V3 0 0 (-1)
+  , _up  = V3 0 1 0
   }
 
 -- | Initialize a game with a given level
