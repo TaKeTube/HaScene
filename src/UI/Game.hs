@@ -55,7 +55,7 @@ playGame
   -> Maybe String -- ^ Preview cell (Nothing == no preview)
   -> IO Game
 playGame fps filename = do
-  let delay = 24000000 `div` fromMaybe 24 fps
+  let delay = 1000000 `div` fromMaybe 24 fps
   chan <- newBChan 10
   void . forkIO $ forever $ do
     writeBChan chan Tick
@@ -73,10 +73,14 @@ playGame fps filename = do
 
 handleEvent :: UI -> BrickEvent Name Tick -> EventM Name (Next UI)
 handleEvent ui (AppEvent Tick                      ) = handleTick ui
-handleEvent ui (VtyEvent (V.EvKey V.KRight      [])) = exec (move Right) ui
-handleEvent ui (VtyEvent (V.EvKey V.KLeft       [])) = exec (move Left) ui
-handleEvent ui (VtyEvent (V.EvKey V.KDown       [])) = exec (move Back) ui
-handleEvent ui (VtyEvent (V.EvKey V.KUp         [])) = exec (move Forward) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'w') [])) = exec (move Forward) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'a') [])) = exec (move Left) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 's') [])) = exec (move Back) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'd') [])) = exec (move Right) ui
+handleEvent ui (VtyEvent (V.EvKey V.KRight      [])) = exec (rotate RRight) ui
+handleEvent ui (VtyEvent (V.EvKey V.KLeft       [])) = exec (rotate RLeft) ui
+handleEvent ui (VtyEvent (V.EvKey V.KDown       [])) = exec (rotate RDown) ui
+handleEvent ui (VtyEvent (V.EvKey V.KUp         [])) = exec (rotate RUp) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt ui
 handleEvent ui _                                     = continue ui
 

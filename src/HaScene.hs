@@ -11,11 +11,11 @@ module HaScene
   -- Game state handlers
   , execTetris
   , evalTetris
-  , move
+  , move, rotate
   -- data structures
   , Game(..)
   , HaScene
-  , Direction(..)
+  , Direction(..), RDirection(..)
   , Mesh(..)
   -- Lenses
   , camera, objects, initFile
@@ -67,6 +67,8 @@ makeLenses ''Camera
 
 data Direction = Left | Right | Back | Forward
   deriving (Eq, Show)
+data RDirection = RLeft | RRight | RUp | RDown
+  deriving (Eq, Show)
 
 -- | Game state
 data Game = Game
@@ -93,15 +95,23 @@ class Translatable s where
   translate = translateBy 1
   translateBy :: Float -> Direction -> s -> s
 
+  translateR :: RDirection -> s -> s
+  translateR = translateRBy 1
+  translateRBy :: Float -> RDirection -> s -> s
+
 instance Translatable Coord where
   translateBy n Left (V3 x y z)    = V3 (x-n) y z
   translateBy n Right (V3 x y z)   = V3 (x+n) y z
   translateBy n Back (V3 x y z)    = V3 x (y-n) z
-  translateBy n Forward (V3 x y z) = V3 x (y-n) z
+  translateBy n Forward (V3 x y z) = V3 x (y+n) z
+  translateRBy n RLeft (V3 x y z)  = V3 (x-n) y z
+  translateRBy n RRight (V3 x y z) = V3 (x+n) y z
+  translateRBy n RUp (V3 x y z)    = V3 x (y-n) z
+  translateRBy n RDown (V3 x y z)  = V3 x (y+n) z
 
 instance Translatable Camera where
-  translateBy n d b =
-    b & pos %~ translateBy n d
+  translateBy n d c = c & pos %~ translateBy n d
+  translateRBy n d c = c & angle %~ translateRBy n d
 
 -- | Visible, active board size
 boardWidth, boardHeight :: Int
@@ -135,11 +145,16 @@ initGame filename = do
 -- | The main game execution, this is executed at each discrete time step
 timeStep :: MonadIO m => HaSceneT m ()
 timeStep = do
-  move Forward
   return ()
 
 move :: Direction -> HaScene ()
 move dir = do
   c <- use camera
   let candidate = translate dir c
+  camera .= candidate
+
+rotate :: RDirection -> HaScene ()
+rotate dir = do
+  c <- use camera
+  let candidate = translateR dir c
   camera .= candidate
