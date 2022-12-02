@@ -23,12 +23,15 @@ import qualified Data.Map                   as M
 import qualified Graphics.Vty               as V
 import           Linear.V3                  (V3 (..))
 
+import qualified Brick                      as V
 import           Data.Maybe                 (fromMaybe)
+import           HaRender                   (render)
 import           HaScene
 
 data UI = UI
-  { _game   :: Game
-  , _isEdit :: Bool
+  { _game     :: Game
+  , _isEdit   :: Bool
+  , _selected :: Int
   }
 
 makeLenses ''UI
@@ -66,6 +69,7 @@ playGame fps filename = do
   ui <- customMain initialVty builder (Just chan) app $ UI
     { _game    = initialGame
     , _isEdit  = False
+    ,_selected  = -1
     }
   return $ ui ^. game
 
@@ -73,33 +77,40 @@ playGame fps filename = do
 
 handleEvent :: UI -> BrickEvent Name Tick -> EventM Name (Next UI)
 handleEvent ui (AppEvent Tick                      ) = handleTick ui
-handleEvent ui (VtyEvent (V.EvKey (V.KChar 'w') [])) = exec (move Forward) ui
-handleEvent ui (VtyEvent (V.EvKey (V.KChar 'a') [])) = exec (move Left) ui
-handleEvent ui (VtyEvent (V.EvKey (V.KChar 's') [])) = exec (move Back) ui
-handleEvent ui (VtyEvent (V.EvKey (V.KChar 'd') [])) = exec (move Right) ui
-handleEvent ui (VtyEvent (V.EvKey V.KRight      [])) = exec (rotate RRight) ui
-handleEvent ui (VtyEvent (V.EvKey V.KLeft       [])) = exec (rotate RLeft) ui
-handleEvent ui (VtyEvent (V.EvKey V.KDown       [])) = exec (rotate RDown) ui
-handleEvent ui (VtyEvent (V.EvKey V.KUp         [])) = exec (rotate RUp) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'w') [])) =
+  if ui ^. isEdit then continue ui else exec (move Forward) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'a') [])) =
+  if ui ^. isEdit then continue ui else exec (move Left) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 's') [])) =
+  if ui ^. isEdit then continue ui else exec (move Back) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'd') [])) =
+  if ui ^. isEdit then continue ui else exec (move Right) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'W') [])) =
+  if ui ^. isEdit then continue ui else exec (move HaScene.Up) ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'S') [])) =
+  if ui ^. isEdit then continue ui else exec (move Down) ui
+handleEvent ui (VtyEvent (V.EvKey V.KRight      [])) =
+  if ui ^. isEdit then continue ui else exec (rotate RRight) ui
+handleEvent ui (VtyEvent (V.EvKey V.KLeft       [])) =
+  if ui ^. isEdit then continue ui else exec (rotate RLeft) ui
+handleEvent ui (VtyEvent (V.EvKey V.KDown       [])) =
+  if ui ^. isEdit then continue ui else exec (rotate RDown) ui
+handleEvent ui (VtyEvent (V.EvKey V.KUp         [])) =
+  if ui ^. isEdit then continue ui else exec (rotate RUp) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt ui
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'i') [])) =
+    continue $ over isEdit not ui & selected .~ if ui ^.isEdit then -1 else 0
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'j') [])) =
+  continue $ ui & selected .~ min (ui ^. selected + 1) (length (ui ^. (game .objects)) - 1)
+handleEvent ui (VtyEvent (V.EvKey (V.KChar 'k') [])) =
+  continue $ ui & selected .~ max (ui ^. selected - 1) 0
 handleEvent ui _                                     = continue ui
 
 -- | This common execution function is used for all game user input except hard
 -- drop and pause. If paused or locked (from hard drop) do nothing, else
 -- execute the state computation.
 exec :: HaScene () -> UI -> EventM Name (Next UI)
-exec op =
-  guarded
-    (not . \ui -> ui ^. isEdit)
-    (game %~ execTetris op)
-
--- | This base execution function takes a predicate and only issues UI
--- modification when predicate passes and game is not over.
-guarded :: (UI -> Bool) -> (UI -> UI) -> UI -> EventM Name (Next UI)
-guarded p f ui = continue
-  $ if not (p ui)
-    then ui
-    else f ui
+exec op ui = continue $ (game %~ execHaScene op) ui
 
 -- | Handles time steps, does nothing if game is over or paused
 handleTick :: UI -> EventM Name (Next UI)
@@ -114,33 +125,43 @@ restart ui = do
   g <- liftIO $ initGame filename
   continue $ ui & game .~ g
                 & isEdit .~ False
+                & selected .~ -1
 
 -- Drawing
-
 drawUI :: UI -> [Widget Name]
 drawUI ui =
-  [ C.vCenter $ vLimit 22 $ hBox
-      [ padLeft Max $ padRight (Pad 2) $ drawStats (ui ^. game)
-      , vLimit 22
+  [ C.vCenter $ vLimit 80 $ hBox
+      [ padLeft Max $ padRight (Pad 2) $ drawStats (ui ^. selected) (ui ^. game)
+      , vLimit 80
           $ withBorderStyle BS.unicodeBold
-          $ B.borderWithLabel (str "Scene") (str $ show $ ui ^. (game . camera))
+          $ B.borderWithLabel (str "Scene") (str $ HaRender.render 80 45 (ui ^. (game . objects)) (ui ^. (game . camera)))
       ]
   ]
 
-showObjList::[Mesh]->[Widget Name]
-showObjList = map f
-  where
-    f a   = padLeftRight 1 $ str (show a)
+hlAttr :: V.AttrName
+hlAttr = "highlight"
 
-drawStats :: Game -> Widget Name
-drawStats g =
+showObjList :: Int -> [(Int, Mesh)] -> [Widget Name]
+showObjList selected = map f
+  where
+    f (i,a) =
+      if selected == i then
+        withAttr hlAttr $ padLeftRight 1 $ str (show a)
+      else
+         padLeftRight 1 $ str (show a)
+
+drawStats :: Int -> Game -> Widget Name
+drawStats selected g =
   hLimit 22
     $ withBorderStyle BS.unicodeBold
     $ B.borderWithLabel (str "Obj Lists")
     $ vBox
-      $ showObjList (g ^. objects) ++ [str "press \"q\" to quit"]
+      $ showObjList selected (zip [0..] (g ^. objects)) ++ [str "press \"q\" to quit"] ++ [str $ show $ _pos $  g ^. camera] ++ [str $ show $ _dir $  g ^. camera] ++ [str $ show $ _up $  g ^. camera]
 
 theMap :: AttrMap
 theMap = attrMap
   V.defAttr
-  []
+  [ (hlAttr , V.defAttr `V.withStyle` V.bold
+                        `V.withForeColor` V.black
+                        `V.withBackColor` V.white)
+  ]

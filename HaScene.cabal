@@ -9,6 +9,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     HaScene
                      , UI.Game
+                     , HaRender
   build-depends:       base >= 4.7 && < 5
                      , brick
                      , containers

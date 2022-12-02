@@ -9,14 +9,18 @@ module HaScene
     initGame
   , timeStep
   -- Game state handlers
-  , execTetris
-  , evalTetris
+  , execHaScene
+  , evalHaScene
+  , eulerMatrix
   , move, rotate
   -- data structures
   , Game(..)
   , HaScene
   , Direction(..), RDirection(..)
+  , Coord(..)
+  , Triangle(..)
   , Mesh(..)
+  , Camera(..)
   -- Lenses
   , camera, objects, initFile
   -- Constants
@@ -35,11 +39,29 @@ import           Data.Map                  (Map)
 import qualified Data.Map                  as M
 import           Data.Sequence             (Seq (..), (><))
 import qualified Data.Sequence             as Seq
-import           Linear.V3
+import           Linear.Matrix
+import           Linear.V3                 (V3 (..))
 import qualified Linear.V3                 as LV
-import           System.Random             (getStdRandom, randomR)
--- Types and instances
 
+-- Types and instances
+eulerMatrix :: V3 Float -> M33 Float
+eulerMatrix (V3 a b c) = let
+    cosa = cos a
+    sina = sin a
+    cosb = cos b
+    sinb = sin b
+    cosc = cos c
+    sinc = sin c
+    ma = V3 (V3 1       0       0      )
+            (V3 0       cosa    (-sina))
+            (V3 0       sina    cosa   )
+    mb = V3 (V3 cosb    0       sinb   )
+            (V3 0       1       0      )
+            (V3 (-sinb) 0       cosb   )
+    mc = V3 (V3 cosc    (-sinc) 0      )
+            (V3 sinc    cosc    0      )
+            (V3 0       0       1      )
+    in mc !*! mb !*! ma
 
 -- | Coordinates
 type Coord = V3 Float
@@ -59,13 +81,14 @@ instance Show Mesh where
   show a = a ^. name
 
 data Camera = Camera
-  { _pos   :: Coord
-  , _angle :: Coord
+  { _pos :: Coord
+  , _dir :: Coord
+  , _up  :: Coord
   }
   deriving (Eq, Show)
 makeLenses ''Camera
 
-data Direction = Left | Right | Back | Forward
+data Direction = Left | Right | Back | Forward | Up | Down
   deriving (Eq, Show)
 data RDirection = RLeft | RRight | RUp | RDown
   deriving (Eq, Show)
@@ -82,11 +105,11 @@ makeLenses ''Game
 type HaSceneT = StateT Game
 type HaScene a = forall m. (Monad m) => HaSceneT m a
 
-evalTetris :: HaScene a -> Game -> a
-evalTetris m = runIdentity . evalStateT m
+evalHaScene :: HaScene a -> Game -> a
+evalHaScene m = runIdentity . evalStateT m
 
-execTetris :: HaScene a -> Game -> Game
-execTetris m = runIdentity . execStateT m
+execHaScene :: HaScene a -> Game -> Game
+execHaScene m = runIdentity . execStateT m
 
 -- Translate class for direct translations, without concern for boundaries
 -- 'shift' concerns safe translations with boundaries
@@ -99,47 +122,52 @@ class Translatable s where
   translateR = translateRBy 1
   translateRBy :: Float -> RDirection -> s -> s
 
+
 instance Translatable Coord where
   translateBy n Left (V3 x y z)    = V3 (x-n) y z
   translateBy n Right (V3 x y z)   = V3 (x+n) y z
-  translateBy n Back (V3 x y z)    = V3 x (y-n) z
-  translateBy n Forward (V3 x y z) = V3 x (y+n) z
-  translateRBy n RLeft (V3 x y z)  = V3 (x-n) y z
-  translateRBy n RRight (V3 x y z) = V3 (x+n) y z
-  translateRBy n RUp (V3 x y z)    = V3 x (y-n) z
-  translateRBy n RDown (V3 x y z)  = V3 x (y+n) z
+  translateBy n Back (V3 x y z)    = V3 x y (z+n)
+  translateBy n Forward (V3 x y z) = V3 x y (z-n)
+  translateBy n Up (V3 x y z)      = V3 x (y+n) z
+  translateBy n Down (V3 x y z)    = V3 x (y-n) z
+
+  translateRBy n RLeft v3  = transpose (eulerMatrix (V3 0 n    0)) !* v3
+  translateRBy n RRight v3 = transpose (eulerMatrix (V3 0 (-n) 0)) !* v3
+  translateRBy n RUp v3    = eulerMatrix (V3 n    0    0) !* v3
+  translateRBy n RDown v3  = eulerMatrix (V3 (-n) 0    0) !* v3
 
 instance Translatable Camera where
   translateBy n d c = c & pos %~ translateBy n d
-  translateRBy n d c = c & angle %~ translateRBy n d
+  translateRBy n d c = c & dir %~ translateRBy n d
+                         & up  %~ translateRBy n d
 
 -- | Visible, active board size
 boardWidth, boardHeight :: Int
 boardWidth = 10
 boardHeight = 20
 
-defaultScene :: String -> [Mesh]
-defaultScene filename = [
-    Mesh {_triangles=[],_name="OBJ1"}
-  , Mesh {_triangles=[],_name="OBJ2"}
-  , Mesh {_triangles=[],_name="OBJ3"}
-  ]
+defaultScene :: String -> IO [Mesh]
+defaultScene filename = do
+  obj1 <- buildMesh "src/models/hat.obj" "hat"
+  obj2 <- buildMesh "src/models/cube.obj" "cube"
+  return [obj1,obj2]
 
 defaultCamera :: Camera
 defaultCamera = Camera
   {
-    _pos = V3 1 1 1
-  , _angle = V3 1 1 1
+    _pos = V3 0 0 3
+  , _dir = V3 0 0 (-1)
+  , _up  = V3 0 1 0
   }
 
 -- | Initialize a game with a given level
 initGame :: String-> IO Game
 initGame filename = do
-
+  scene <- defaultScene filename
   pure $ Game
-    { _objects      = defaultScene filename
+    { _objects      = scene
     , _camera       = defaultCamera
-    , _initFile     = "temp"
+    , _initFile     = filename
     }
 
 -- | The main game execution, this is executed at each discrete time step
@@ -158,3 +186,45 @@ rotate dir = do
   c <- use camera
   let candidate = translateR dir c
   camera .= candidate
+
+safeSelect :: [a] -> Int -> Maybe a
+safeSelect [] _ = Nothing
+safeSelect xs i
+  | i < 0 || i >= length xs = Nothing
+  | otherwise = Just (xs !! i)
+
+buildMesh:: FilePath -> String -> IO Mesh
+buildMesh filepath name= do
+    (vsraw, fsraw) <- readOBJ filepath
+    let vs = map f vsraw
+        f (x, y, z) = V3 x y z
+    let fs = map f2 fsraw
+        f2 (x, y, z) = V3 (vs !! (x-1)) (vs !! (y-1)) (vs !! (z-1))
+    return Mesh {_triangles=fs,_name=name}
+
+split :: (Eq a) => a -> [a] -> [[a]]
+split d xs = split' d (reverse xs)
+
+split' :: (Eq a) => a -> [a] -> [[a]]
+split' d xs = let
+    addchar (l:ls) x
+        | x == d  = []:l:ls
+        | x /= d  = (x:l):ls
+    addchar _ x = []
+    in foldl addchar [[]] xs
+
+updatevf :: ([(Float,Float,Float)],[(Int,Int,Int)]) -> [String] -> ([(Float,Float,Float)],[(Int,Int,Int)])
+updatevf (vs,fs) ("v":sx:sy:sz:_) = ((read sx,read sy,read sz):vs,fs)
+updatevf (vs,fs) ("f":fc) = let
+    getv s = read $ head $ split '/' s
+    idx = map getv fc
+    tris = zip3 (repeat (head idx)) (drop 1 idx) (drop 2 idx) -- NOTE: Triangularization may not be correct for complex faces.
+    in (vs,tris ++ fs)
+updatevf (vs,fs) _ = (vs,fs)
+
+readOBJ :: FilePath -> IO ([(Float,Float,Float)],[(Int,Int,Int)])
+readOBJ fname = do
+    contents <- readFile fname
+    let lins    = map words (lines contents)
+    let (vs,fs) = foldl updatevf ([],[]) lins
+    return (reverse vs,fs)

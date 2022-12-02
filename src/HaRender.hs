@@ -1,51 +1,43 @@
 module HaRender
     (
+<<<<<<< HEAD
       Mesh(..)
     , Camera(..)
     , render
+=======
+        render
+>>>>>>> 084d96421067ce4551ebd1808b92c1338e819cb6
     ) where
 
-import Data.Array.MArray
-import Data.Array.Unboxed
-import Data.Array.ST
-import Control.Monad
-import Control.Monad.ST
-import Data.List (sortBy)
+import           Control.Monad
+import           Control.Monad.ST
+import           Data.Array.MArray
+import           Data.Array.ST
+import           Data.Array.Unboxed
+import           Data.List          (sortBy)
 
+import           Control.Lens       hiding (Empty)
 import           GHC.Float
-import           Control.Lens              hiding (Empty)
-import           Linear.V3
-import           Linear.V4
-import           Linear.Matrix
-import           Linear.Metric
+import           Linear
 
+<<<<<<< HEAD
 -- | Coordinates
 type Coord = V3 Float
+=======
+import           HaScene
+>>>>>>> 084d96421067ce4551ebd1808b92c1338e819cb6
 
--- | Triangle in location context
-type Triangle = V3 Coord
-
-data Mesh = Mesh
-  { _triangles :: [Triangle]
-  , _name      :: String
-  }
-  deriving (Eq)
+data Transform = Transform
 
 -- instance Show Mesh where
 --   show :: Mesh -> String
 --   show a = a ^. name
-
-data Camera = Camera
-  { _pos   :: Coord
-  , _angle :: Coord
-  }
-  deriving (Eq, Show)
-
 sortTriangle :: Triangle -> Triangle
 sortTriangle (V3 v0 v1 v2) = let
     [v0', v1', v2'] = sortBy (\(V3 _ y1 _) (V3 _ y2 _) -> compare y1 y2) [v0, v1, v2]
     in V3 v0' v1' v2'
 
+<<<<<<< HEAD
 eulerMatrix :: V3 Float -> M33 Float
 eulerMatrix (V3 a b c) = let
     cosa = cos a
@@ -64,18 +56,33 @@ eulerMatrix (V3 a b c) = let
             (V3 sinc    cosc    0      )
             (V3 0       0       1      )
     in mc !*! mb !*! ma
+=======
+-- viewMatrix :: Camera -> M44 Float
+-- viewMatrix cam = let
+--     rotM = eulerMatrix (_angle cam)
+--     invRotM = transpose rotM
+--     pos = _pos cam
+--     V3 vx vy vz = - (invRotM !* pos)
+--     V3 (V3 mxx mxy mxz) (V3 myx myy myz) (V3 mzx mzy mzz) = invRotM
+--     in V4   (V4 mxx mxy mxz vx)
+--             (V4 myx myy myz vy)
+--             (V4 mzx mzy mzz vz)
+--             (V4 0   0   0   1 )
+
+>>>>>>> 084d96421067ce4551ebd1808b92c1338e819cb6
 
 viewMatrix :: Camera -> M44 Float
 viewMatrix cam = let
-    rotM = eulerMatrix (_angle cam)
-    invRotM = transpose rotM
+    dir = normalize $ _dir cam
+    up = normalize $ _up cam
     pos = _pos cam
-    V3 vx vy vz = - (invRotM !* pos)
-    V3 (V3 mxx mxy mxz) (V3 myx myy myz) (V3 mzx mzy mzz) = invRotM
-    in V4   (V4 mxx mxy mxz vx)
-            (V4 myx myy myz vy)
-            (V4 mzx mzy mzz vz)
-            (V4 0   0   0   1 )
+    lookat = lookAt pos dir up
+    projection = perspective 60 (16/9) 0.1 50
+    in projection !*! lookat
+    -- in transpose V4 (V4 (right^._x)   (right^._y)  (right^._z)    0)
+    --       (V4 (up'^._x)     (up'^._y)    (up'^._z)      0)
+    --       (V4 (dir^._x)     (dir^._y)    (dir^._z)      0)
+    --       (V4 (pos^._x)     (pos^._y)    (pos^._z)      1)
 
 projMatrix :: Float -> Float -> Float -> Float -> M44 Float
 projMatrix fov aspectRatio zNear zFar = let
@@ -188,5 +195,10 @@ render w h ms cam = elems $ runSTUArray $ do
             else do return ()
         ) pixels
     forM_ [0..h-1] $ \j -> do
+<<<<<<< HEAD
         writeArray fbuf (j,w) '\n'
     return fbuf
+=======
+        writeArray fbuf (j,w-1) '\n'
+    return fbuf
+>>>>>>> 084d96421067ce4551ebd1808b92c1338e819cb6
