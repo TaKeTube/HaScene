@@ -1,7 +1,8 @@
 module HaRender
     (
       Mesh(..)
-    , Camera
+    , Camera(..)
+    , render
     ) where
 
 import Data.Array.MArray
@@ -17,8 +18,6 @@ import           Linear.V3
 import           Linear.V4
 import           Linear.Matrix
 import           Linear.Metric
-
-data Transform = Transform
 
 -- | Coordinates
 type Coord = V3 Float
@@ -64,7 +63,7 @@ eulerMatrix (V3 a b c) = let
     mc = V3 (V3 cosc    (-sinc) 0      )
             (V3 sinc    cosc    0      )
             (V3 0       0       1      )
-    in mc !*! mb !*! mc
+    in mc !*! mb !*! ma
 
 viewMatrix :: Camera -> M44 Float
 viewMatrix cam = let
@@ -88,7 +87,7 @@ projMatrix fov aspectRatio zNear zFar = let
             (V4 0                    0       1                0               )
 
 transVert :: M44 Float -> V3 Float -> V3 Float
-transVert mvpM (V3 x y z) = normalizePoint mvpM !* V4 x y z 1
+transVert mvpM (V3 x y z) = normalizePoint (mvpM !* V4 x y z 1)
 
 transTriangle :: M44 Float -> Triangle -> Triangle
 transTriangle mvpM (V3 v0 v1 v2) =
@@ -102,7 +101,7 @@ faceCulling ts = let
 vertShader :: Camera -> Mesh -> [Triangle]
 vertShader cam m = let
     viewM = viewMatrix cam
-    projM = projMatrix 45 1 0.1 50
+    projM = projMatrix 45 1 (-0.1) (-50)
     mvpM  = projM !*! viewM
     in map (transTriangle mvpM) (_triangles m)
 
@@ -136,12 +135,12 @@ rasterize w h t@(V3 v0 v1 v2) = let
     -- continious coord <-> discrete coord
     dx = 1.0 / int2Float w
     dy = 1.0 / int2Float h
-    x2xx x = max 0 $ min (w - 1) $ floor (x / dx)
-    y2yy y = max 0 $ min (h - 1) $ floor (y / dy)
-    xx2x xx = dx * (int2Float xx + 0.5)
-    yy2y yy = dy * (int2Float yy + 0.5)
+    x2xx x = max 0 $ min (w - 1) $ floor ((x + 1) * 0.5 / dx)
+    y2yy y = max 0 $ min (h - 1) $ floor ((y + 1) * 0.5 / dy)
+    xx2x xx = dx * (int2Float xx + 0.5) * 2 - 1
+    yy2y yy = dy * (int2Float yy + 0.5) * 2 - 1
     -- find bounds of x for a given y
-    lerpx x1 y1 x2 y2 y = x1 + (y - y1) * (x2 - x1) / (y2 - y2)
+    lerpx x1 y1 x2 y2 y = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
     xBoundVert y
         | y <= yMin = yMin
         | y >= yMax = yMax
@@ -166,7 +165,7 @@ rasterize w h t@(V3 v0 v1 v2) = let
         in perspectInterp (V3 zMin zMid zMax) beryCoord (V3 zMin zMid zMax)
     -- Just Use Flat Shader
     n = normalize (cross v0 v1)
-    color = fragShader (normalize (V3 1 0 0)) n
+    color = fragShader (normalize (V3 (-1) 1 0)) n
     -- index range of y
     yyd = y2yy (yMin + dy / 2)
     yyu = y2yy (yMax - dy / 2)
@@ -189,5 +188,5 @@ render w h ms cam = elems $ runSTUArray $ do
             else do return ()
         ) pixels
     forM_ [0..h-1] $ \j -> do
-        writeArray fbuf (j,w-1) '\n'
+        writeArray fbuf (j,w) '\n'
     return fbuf
