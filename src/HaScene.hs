@@ -16,7 +16,10 @@ module HaScene
   , Game(..)
   , HaScene
   , Direction(..), RDirection(..)
+  , Coord(..)
+  , Triangle(..)
   , Mesh(..)
+  , Camera(..)
   -- Lenses
   , camera, objects, initFile
   -- Constants

@@ -1,47 +1,29 @@
 module HaRender
     (
-      Mesh(..)
-    , Camera
+        render
     ) where
 
-import Data.Array.MArray
-import Data.Array.Unboxed
-import Data.Array.ST
-import Control.Monad
-import Control.Monad.ST
-import Data.List (sortBy)
+import           Control.Monad
+import           Control.Monad.ST
+import           Data.Array.MArray
+import           Data.Array.ST
+import           Data.Array.Unboxed
+import           Data.List          (sortBy)
 
+import           Control.Lens       hiding (Empty)
 import           GHC.Float
-import           Control.Lens              hiding (Empty)
-import           Linear.V3
-import           Linear.V4
 import           Linear.Matrix
 import           Linear.Metric
+import           Linear.V3
+import           Linear.V4
+
+import           HaScene
 
 data Transform = Transform
-
--- | Coordinates
-type Coord = V3 Float
-
--- | Triangle in location context
-type Triangle = V3 Coord
-
-data Mesh = Mesh
-  { _triangles :: [Triangle]
-  , _name      :: String
-  }
-  deriving (Eq)
 
 -- instance Show Mesh where
 --   show :: Mesh -> String
 --   show a = a ^. name
-
-data Camera = Camera
-  { _pos   :: Coord
-  , _angle :: Coord
-  }
-  deriving (Eq, Show)
-
 sortTriangle :: Triangle -> Triangle
 sortTriangle (V3 v0 v1 v2) = let
     [v0', v1', v2'] = sortBy (\(V3 _ y1 _) (V3 _ y2 _) -> compare y1 y2) [v0, v1, v2]
