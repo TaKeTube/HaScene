@@ -1,12 +1,6 @@
 module HaRender
     (
-<<<<<<< HEAD
-      Mesh(..)
-    , Camera(..)
-    , render
-=======
         render
->>>>>>> 084d96421067ce4551ebd1808b92c1338e819cb6
     ) where
 
 import           Control.Monad
@@ -20,43 +14,13 @@ import           Control.Lens       hiding (Empty)
 import           GHC.Float
 import           Linear
 
-<<<<<<< HEAD
--- | Coordinates
-type Coord = V3 Float
-=======
 import           HaScene
->>>>>>> 084d96421067ce4551ebd1808b92c1338e819cb6
-
-data Transform = Transform
-
--- instance Show Mesh where
 --   show :: Mesh -> String
---   show a = a ^. name
 sortTriangle :: Triangle -> Triangle
 sortTriangle (V3 v0 v1 v2) = let
     [v0', v1', v2'] = sortBy (\(V3 _ y1 _) (V3 _ y2 _) -> compare y1 y2) [v0, v1, v2]
     in V3 v0' v1' v2'
 
-<<<<<<< HEAD
-eulerMatrix :: V3 Float -> M33 Float
-eulerMatrix (V3 a b c) = let
-    cosa = cos a
-    sina = sin a
-    cosb = cos b
-    sinb = sin b
-    cosc = cos c
-    sinc = sin c
-    ma = V3 (V3 cosa    (-sina) 0      )
-            (V3 sina    cosa    0      )
-            (V3 0       0       1      )
-    mb = V3 (V3 1       0       0      )
-            (V3 0       cosb    (-sinb))
-            (V3 0       sinb    cosb   )
-    mc = V3 (V3 cosc    (-sinc) 0      )
-            (V3 sinc    cosc    0      )
-            (V3 0       0       1      )
-    in mc !*! mb !*! ma
-=======
 -- viewMatrix :: Camera -> M44 Float
 -- viewMatrix cam = let
 --     rotM = eulerMatrix (_angle cam)
@@ -69,7 +33,6 @@ eulerMatrix (V3 a b c) = let
 --             (V4 mzx mzy mzz vz)
 --             (V4 0   0   0   1 )
 
->>>>>>> 084d96421067ce4551ebd1808b92c1338e819cb6
 
 viewMatrix :: Camera -> M44 Float
 viewMatrix cam = let
@@ -195,10 +158,5 @@ render w h ms cam = elems $ runSTUArray $ do
             else do return ()
         ) pixels
     forM_ [0..h-1] $ \j -> do
-<<<<<<< HEAD
-        writeArray fbuf (j,w) '\n'
-    return fbuf
-=======
         writeArray fbuf (j,w-1) '\n'
     return fbuf
->>>>>>> 084d96421067ce4551ebd1808b92c1338e819cb6
