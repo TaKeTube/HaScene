@@ -13,6 +13,7 @@ module HaScene
   , evalHaScene
   , eulerMatrix
   , move, rotate
+  , moveMesh, rotateMesh, scaleMesh
   -- data structures
   , Game(..)
   , HaScene
@@ -34,7 +35,7 @@ import           Prelude                   hiding (Left, Right)
 
 import           Control.Lens              hiding (Empty)
 import           Control.Monad.Trans.State (StateT (..), evalStateT, execStateT,
-                                            gets)
+                                            get, gets, put)
 import           Data.Map                  (Map)
 import qualified Data.Map                  as M
 import           Data.Sequence             (Seq (..), (><))
@@ -158,7 +159,7 @@ defaultScene :: String -> IO [Mesh]
 defaultScene filename = do
   obj1 <- buildMesh "src/models/hat.obj" "hat"
   obj2 <- buildMesh "src/models/cube.obj" "cube"
-  return [obj1]
+  return [obj1, obj2]
 
 defaultCamera :: Camera
 defaultCamera = Camera
@@ -191,12 +192,25 @@ move dir = do
 
 rotate :: RDirection -> HaScene ()
 rotate dir = do
-  return ()
+  c <- use camera
+  let candidate = translateR dir c
+  camera .= candidate
 
 -- Edit Scene
+
 moveMesh :: Direction -> Int -> HaScene ()
 moveMesh dir selected = do
-  return ()
+  -- Retrieve the current Game instance from the HaScene monad
+  game <- get
+
+  -- Update the value of the selected object using the .~ operator
+  put $
+    game &
+    objects.ix selected .~
+    translateMesh
+    Move
+    (translate dir (game ^. (camera . pos)) (V3 0 0 0))
+    ((game ^. objects) !! selected)
 
 rotateMesh :: RDirection -> Int -> HaScene ()
 rotateMesh dir selected = do
@@ -205,19 +219,25 @@ rotateMesh dir selected = do
 scaleMesh :: RDirection -> Int -> HaScene ()
 scaleMesh dir selected = do
   c <- use camera
-  let candidate = translateR dir c
-  camera .= candidate
+  camera .= translateR dir c
 
 
 data MeshOp = Move | Rotate | Scale
 
 translateMesh :: MeshOp -> Coord -> Mesh -> Mesh
 -- | a is the move vector
-translateMesh Move a b   = b
+translateMesh Move mv mesh =
+  Mesh{
+    _triangles = map f (_triangles mesh),
+    _name = _name mesh
+  }
+  where
+    f t = t + V3 mv mv mv
+
 -- | a is the eular angle. Extrinsic rotation
-translateMesh Rotate a b = b
+translateMesh Rotate a b   = b
 -- | a[0] is the multiplier
-translateMesh Scale a b  = b
+translateMesh Scale a b    = b
 
 -- Parse files and build Objects
 buildMesh:: FilePath -> String -> IO Mesh

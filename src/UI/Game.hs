@@ -11,7 +11,7 @@ import           Control.Monad              (forever, void)
 import           Control.Monad.IO.Class     (liftIO)
 import           Prelude                    hiding (Left, Right)
 
-import           Brick                      hiding (Down)
+import           Brick                      hiding (Down, Up)
 import           Brick.BChan
 import qualified Brick.Widgets.Border       as B
 import qualified Brick.Widgets.Border.Style as BS
@@ -73,30 +73,38 @@ playGame fps filename = do
     }
   return $ ui ^. game
 
--- Handling events
+editOrView :: HaScene () -> HaScene() -> UI -> EventM Name (Next UI)
+editOrView f1 f2 ui =
+  if ui ^. isEdit then exec f1 ui  else exec f2 ui
+emptyOp :: HaScene ()
+emptyOp = do return ()
 
+-- Handling events
 handleEvent :: UI -> BrickEvent Name Tick -> EventM Name (Next UI)
 handleEvent ui (AppEvent Tick                      ) = handleTick ui
+
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'w') [])) =
-  if ui ^. isEdit then continue ui else exec (move Forward) ui
+  editOrView (moveMesh Forward $ ui^.selected) (move Forward) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'a') [])) =
-  if ui ^. isEdit then continue ui else exec (move Left) ui
+  editOrView (moveMesh Back $ ui^.selected) (move Left) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 's') [])) =
-  if ui ^. isEdit then continue ui else exec (move Back) ui
+  editOrView (moveMesh Left $ ui^.selected) (move Back) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'd') [])) =
-  if ui ^. isEdit then continue ui else exec (move Right) ui
+  editOrView (moveMesh Right $ ui^.selected) (move Right) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'W') [])) =
-  if ui ^. isEdit then continue ui else exec (move HaScene.Up) ui
+  editOrView (moveMesh Up $ ui^.selected) (move Up) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'S') [])) =
-  if ui ^. isEdit then continue ui else exec (move Down) ui
-handleEvent ui (VtyEvent (V.EvKey V.KRight      [])) =
-  if ui ^. isEdit then continue ui else exec (rotate RRight) ui
+  editOrView (moveMesh Down $ ui^.selected) (move Down) ui
+
 handleEvent ui (VtyEvent (V.EvKey V.KLeft       [])) =
-  if ui ^. isEdit then continue ui else exec (rotate RLeft) ui
+  editOrView emptyOp (rotate RLeft) ui
+handleEvent ui (VtyEvent (V.EvKey V.KRight      [])) =
+  editOrView emptyOp (rotate RRight) ui
 handleEvent ui (VtyEvent (V.EvKey V.KDown       [])) =
-  if ui ^. isEdit then continue ui else exec (rotate RDown) ui
+  editOrView emptyOp (rotate RDown) ui
 handleEvent ui (VtyEvent (V.EvKey V.KUp         [])) =
-  if ui ^. isEdit then continue ui else exec (rotate RUp) ui
+  editOrView emptyOp (rotate RUp) ui
+
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'i') [])) =
     continue $ over isEdit not ui & selected .~ if ui ^.isEdit then -1 else 0
