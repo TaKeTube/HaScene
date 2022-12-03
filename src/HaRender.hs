@@ -38,7 +38,7 @@ viewMatrix cam = let
     dir = normalize $ _dir cam
     up = normalize $ _up cam
     pos = _pos cam
-    lookat = lookAt pos dir up
+    lookat = lookAt pos (pos+dir) up
     -- projection = perspective 60 (16/9) 0.1 50
     in lookat
     -- -- in transpose V4 (V4 (right^._x)   (right^._y)  (right^._z)    0)
@@ -97,8 +97,8 @@ fragShader :: V3 Float -> V3 Float -> Char
 fragShader light n = let
     colorMap = ".,-~:;!*=#$@"
     colorLen = length colorMap - 1
-    -- idx = round (int2Float colorLen * (max 0 (dot (-light) n)))
-    idx = round (int2Float colorLen * (dot (-light) n * 0.5 + 0.5))
+    idx = round (int2Float colorLen * max 0 (dot (-light) n))
+    -- idx = round (int2Float colorLen * (dot (-light) n * 0.5 + 0.5))
     in colorMap !! idx
 
 perspectInterp :: V3 Float -> V3 Float -> V3 Float -> Float
@@ -153,9 +153,9 @@ rasterize w h t@(V3 v0 v1 v2) = let
         beryCoord = berycentric2D x y t
         in perspectInterp (V3 zMin zMid zMax) beryCoord (V3 zMin zMid zMax)
     -- Just Use Flat Shader
-    -- n = normalize $ cross (normalize $ v0-v2) (normalize $ v1-v2)
-    n = normalize $ cross v0 v1
-    color = fragShader (normalize (V3 0 0 (-1))) n
+    n = normalize $ cross (normalize $ v0-v2) (normalize $ v1-v2)
+    -- n = normalize $ cross v0 v1
+    color = fragShader (normalize (V3 1 1 (-1))) n
     -- index range of y
     yyd = y2yy (yMin + dy / 2)
     yyu = y2yy (yMax - dy / 2)

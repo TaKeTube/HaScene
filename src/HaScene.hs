@@ -39,9 +39,7 @@ import           Data.Map                  (Map)
 import qualified Data.Map                  as M
 import           Data.Sequence             (Seq (..), (><))
 import qualified Data.Sequence             as Seq
-import           Linear.Matrix
-import           Linear.V3                 (V3 (..))
-import qualified Linear.V3                 as LV
+import           Linear                    hiding (rotate)
 
 -- Types and instances
 eulerMatrix :: V3 Float -> M33 Float
@@ -114,9 +112,9 @@ execHaScene m = runIdentity . execStateT m
 -- Translate class for direct translations, without concern for boundaries
 -- 'shift' concerns safe translations with boundaries
 class Translatable s where
-  translate :: Direction -> s -> s
+  translate :: Direction -> Coord -> s -> s
   translate = translateBy 0.05
-  translateBy :: Float -> Direction -> s -> s
+  translateBy :: Float -> Direction -> Coord -> s -> s
 
   translateR :: RDirection -> s -> s
   translateR = translateRBy 0.01
@@ -124,20 +122,30 @@ class Translatable s where
 
 
 instance Translatable Coord where
-  translateBy n Left (V3 x y z)    = V3 (x-n) y z
-  translateBy n Right (V3 x y z)   = V3 (x+n) y z
-  translateBy n Back (V3 x y z)    = V3 x y (z+n)
-  translateBy n Forward (V3 x y z) = V3 x y (z-n)
-  translateBy n Up (V3 x y z)      = V3 x (y+n) z
-  translateBy n Down (V3 x y z)    = V3 x (y-n) z
+  translateBy n Forward dir (V3 x y z)    =
+    let
+      dx = (dir ^. _x) * n
+      dz = (dir ^. _z) * n
+      in
+    V3 (x+dx) y (z+dz)
+  translateBy n Back dir c   = translateBy (-n) Forward dir c
+  translateBy n Left dir (V3 x y z)    =
+    let
+      dx = - (dir ^. _z) * n
+      dz = (dir ^. _x) * n
+      in
+    V3 (x+dx) y (z+dz)
+  translateBy n Right dir c = translateBy (-n) Left dir c
+  translateBy n Up _ (V3 x y z)        = V3 x (y+n) z
+  translateBy n Down d c               = translateBy (-n) Up d c
 
-  translateRBy n RLeft v3  = transpose (eulerMatrix (V3 0 n    0)) !* v3
-  translateRBy n RRight v3 = transpose (eulerMatrix (V3 0 (-n) 0)) !* v3
-  translateRBy n RUp v3    = eulerMatrix (V3 n    0    0) !* v3
-  translateRBy n RDown v3  = eulerMatrix (V3 (-n) 0    0) !* v3
+  translateRBy n RLeft v3  = normalize $ transpose (eulerMatrix (V3 0 n    0)) !* v3
+  translateRBy n RRight v3 = translateRBy (-n) RLeft v3
+  translateRBy n RUp v3    = normalize $ eulerMatrix (V3 n    0    0) !* v3
+  translateRBy n RDown v3 = translateRBy (-n) RUp v3
 
 instance Translatable Camera where
-  translateBy n d c = c & pos %~ translateBy n d
+  translateBy n op dir cam = cam & pos %~ translateBy n op dir
   translateRBy n d c = c & dir %~ translateRBy n d
                          & up  %~ translateRBy n d
 
@@ -150,7 +158,7 @@ defaultScene :: String -> IO [Mesh]
 defaultScene filename = do
   obj1 <- buildMesh "src/models/hat.obj" "hat"
   obj2 <- buildMesh "src/models/cube.obj" "cube"
-  return [obj1,obj2]
+  return [obj1]
 
 defaultCamera :: Camera
 defaultCamera = Camera
@@ -178,7 +186,7 @@ timeStep = do
 move :: Direction -> HaScene ()
 move dir = do
   c <- use camera
-  let candidate = translate dir c
+  let candidate = translate dir (_dir c) c
   camera .= candidate
 
 rotate :: RDirection -> HaScene ()
