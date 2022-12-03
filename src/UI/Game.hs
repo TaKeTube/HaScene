@@ -105,7 +105,7 @@ handleEvent ui (VtyEvent (V.EvKey V.KDown       [])) =
 handleEvent ui (VtyEvent (V.EvKey V.KUp         [])) =
   editOrView emptyOp (rotate RUp) ui
 
-handleEvent ui (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt ui
+handleEvent ui (VtyEvent (V.EvKey V.KEsc        [])) = halt ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'i') [])) =
     continue $ over isEdit not ui & selected .~ if ui ^.isEdit then -1 else 0
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'j') [])) =
@@ -165,11 +165,7 @@ drawStats selected g =
     $ B.borderWithLabel (str "Obj Lists")
     $ vBox
       $ showObjList selected (zip [0..] (g ^. objects)) ++
-      [str "press \"q\" to quit"] ++
-      [str $ show $ _pos $  g ^. camera] ++
-      [str $ show $ _dir $  g ^. camera] ++
-      [str $ show $ _up $  g ^. camera] ++
-      [str $ show $ head(_triangles  $  head (g ^. objects))]
+      [str "press ESC to quit"]
 
 theMap :: AttrMap
 theMap = attrMap
