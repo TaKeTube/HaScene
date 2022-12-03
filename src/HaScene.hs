@@ -191,16 +191,31 @@ move dir = do
 
 rotate :: RDirection -> HaScene ()
 rotate dir = do
+  return ()
+
+moveMesh :: Direction -> Int -> HaScene ()
+moveMesh dir selected = do
+  return ()
+
+rotateMesh :: RDirection -> Int -> HaScene ()
+rotateMesh dir selected = do
+  return ()
+
+scaleMesh :: RDirection -> Int -> HaScene ()
+scaleMesh dir selected = do
   c <- use camera
   let candidate = translateR dir c
   camera .= candidate
 
-safeSelect :: [a] -> Int -> Maybe a
-safeSelect [] _ = Nothing
-safeSelect xs i
-  | i < 0 || i >= length xs = Nothing
-  | otherwise = Just (xs !! i)
 
+data MeshOp = Move | Rotate | Scale
+
+translateMesh :: MeshOp -> Coord -> Mesh -> Mesh
+translateMesh Move a b   = b
+translateMesh Rotate a b = b
+translateMesh Scale a b  = b
+
+-- Parse files and build Objects
 buildMesh:: FilePath -> String -> IO Mesh
 buildMesh filepath name= do
     (vsraw, fsraw) <- readOBJ filepath

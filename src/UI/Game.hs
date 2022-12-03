@@ -152,7 +152,7 @@ showObjList selected = map f
 
 drawStats :: Int -> Game -> Widget Name
 drawStats selected g =
-  hLimit 22
+  hLimit 80
     $ withBorderStyle BS.unicodeBold
     $ B.borderWithLabel (str "Obj Lists")
     $ vBox
