@@ -164,7 +164,7 @@ defaultScene filename = do
 defaultCamera :: Camera
 defaultCamera = Camera
   {
-    _pos = V3 0 0 3
+    _pos = V3 0 0 6
   , _dir = V3 0 0 (-1)
   , _up  = V3 0 1 0
   }
@@ -203,6 +203,8 @@ moveMesh dir selected = do
   -- Retrieve the current Game instance from the HaScene monad
   game <- get
 
+  let target = (game ^. objects) !! selected
+
   -- Update the value of the selected object using the .~ operator
   put $
     game &
@@ -210,7 +212,7 @@ moveMesh dir selected = do
     translateMesh
     Move
     (translate dir (game ^. (camera . pos)) (V3 0 0 0))
-    ((game ^. objects) !! selected)
+    target
 
 rotateMesh :: RDirection -> Int -> HaScene ()
 rotateMesh dir selected = do
@@ -232,7 +234,7 @@ translateMesh Move mv mesh =
     _name = _name mesh
   }
   where
-    f t = t + V3 mv mv mv
+    f t = t - V3 mv mv mv
 
 -- | a is the eular angle. Extrinsic rotation
 translateMesh Rotate a b   = b

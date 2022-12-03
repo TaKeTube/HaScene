@@ -86,9 +86,9 @@ handleEvent ui (AppEvent Tick                      ) = handleTick ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'w') [])) =
   editOrView (moveMesh Forward $ ui^.selected) (move Forward) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'a') [])) =
-  editOrView (moveMesh Back $ ui^.selected) (move Left) ui
+  editOrView (moveMesh Left $ ui^.selected) (move Left) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 's') [])) =
-  editOrView (moveMesh Left $ ui^.selected) (move Back) ui
+  editOrView (moveMesh Back $ ui^.selected) (move Back) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'd') [])) =
   editOrView (moveMesh Right $ ui^.selected) (move Right) ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'W') [])) =
