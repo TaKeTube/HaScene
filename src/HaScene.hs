@@ -178,7 +178,7 @@ initGame filename = do
     , _initFile     = filename
     }
 
--- | The main game execution, this is executed at each discrete time step
+-- Move Camera
 timeStep :: MonadIO m => HaSceneT m ()
 timeStep = do
   return ()
@@ -193,6 +193,7 @@ rotate :: RDirection -> HaScene ()
 rotate dir = do
   return ()
 
+-- Edit Scene
 moveMesh :: Direction -> Int -> HaScene ()
 moveMesh dir selected = do
   return ()
@@ -211,8 +212,11 @@ scaleMesh dir selected = do
 data MeshOp = Move | Rotate | Scale
 
 translateMesh :: MeshOp -> Coord -> Mesh -> Mesh
+-- | a is the move vector
 translateMesh Move a b   = b
+-- | a is the eular angle. Extrinsic rotation
 translateMesh Rotate a b = b
+-- | a[0] is the multiplier
 translateMesh Scale a b  = b
 
 -- Parse files and build Objects
