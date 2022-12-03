@@ -142,7 +142,7 @@ drawUI ui =
       [ padLeft Max $ padRight (Pad 2) $ drawStats (ui ^. selected) (ui ^. game)
       , vLimit 80
           $ withBorderStyle BS.unicodeBold
-          $ B.borderWithLabel (str "Scene") (str $ HaRender.render 120 60 (ui ^. (game . objects)) (ui ^. (game . camera)))
+          $ B.borderWithLabel (str "Scene") (str $ HaRender.render 60 30 (ui ^. (game . objects)) (ui ^. (game . camera)))
       ]
   ]
 
@@ -164,7 +164,12 @@ drawStats selected g =
     $ withBorderStyle BS.unicodeBold
     $ B.borderWithLabel (str "Obj Lists")
     $ vBox
-      $ showObjList selected (zip [0..] (g ^. objects)) ++ [str "press \"q\" to quit"] ++ [str $ show $ _pos $  g ^. camera] ++ [str $ show $ _dir $  g ^. camera] ++ [str $ show $ _up $  g ^. camera]
+      $ showObjList selected (zip [0..] (g ^. objects)) ++
+      [str "press \"q\" to quit"] ++
+      [str $ show $ _pos $  g ^. camera] ++
+      [str $ show $ _dir $  g ^. camera] ++
+      [str $ show $ _up $  g ^. camera] ++
+      [str $ show $ head(_triangles  $  head (g ^. objects))]
 
 theMap :: AttrMap
 theMap = attrMap

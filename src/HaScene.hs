@@ -113,15 +113,25 @@ execHaScene m = runIdentity . execStateT m
 -- Translate class for direct translations, without concern for boundaries
 -- 'shift' concerns safe translations with boundaries
 class Translatable s where
-  translate :: Direction -> Coord -> s -> s
-  translate = translateBy 0.05
+  translate :: Float -> Direction -> Coord -> s -> s
+  translate step = translateBy step
   translateBy :: Float -> Direction -> Coord -> s -> s
 
-  translateR :: RDirection -> s -> s
-  translateR = translateRBy 0.01
+  translateR :: Float -> RDirection -> s -> s
+  translateR step = translateRBy step
   translateRBy :: Float -> RDirection -> s -> s
 
+camStep::Float
+camStep = 0.01
 
+camStepR::Float
+camStepR = 0.01
+
+meshStep::Float
+meshStep = 0.05
+
+meshStepR::Float
+meshStepR = 0.05
 instance Translatable Coord where
   translateBy n Forward dir (V3 x y z)    =
     let
@@ -187,19 +197,19 @@ timeStep = do
 move :: Direction -> HaScene ()
 move dir = do
   c <- use camera
-  let candidate = translate dir (_dir c) c
+  let candidate = translate camStep dir (_dir c) c
   camera .= candidate
 
 rotate :: RDirection -> HaScene ()
 rotate dir = do
   c <- use camera
-  let candidate = translateR dir c
+  let candidate = translateR camStepR dir c
   camera .= candidate
 
 -- Edit Scene
 
 moveMesh :: Direction -> Int -> HaScene ()
-moveMesh dir selected = do
+moveMesh d selected = do
   -- Retrieve the current Game instance from the HaScene monad
   game <- get
 
@@ -211,7 +221,7 @@ moveMesh dir selected = do
     objects.ix selected .~
     translateMesh
     Move
-    (translate dir (game ^. (camera . pos)) (V3 0 0 0))
+    (translate meshStep d (game ^. (camera . dir)) (V3 0 0 0))
     target
 
 rotateMesh :: RDirection -> Int -> HaScene ()
@@ -220,8 +230,7 @@ rotateMesh dir selected = do
 
 scaleMesh :: RDirection -> Int -> HaScene ()
 scaleMesh dir selected = do
-  c <- use camera
-  camera .= translateR dir c
+  return ()
 
 
 data MeshOp = Move | Rotate | Scale
@@ -234,7 +243,7 @@ translateMesh Move mv mesh =
     _name = _name mesh
   }
   where
-    f t = t - V3 mv mv mv
+    f t = t + V3 mv mv mv
 
 -- | a is the eular angle. Extrinsic rotation
 translateMesh Rotate a b   = b
