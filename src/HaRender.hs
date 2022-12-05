@@ -16,6 +16,10 @@ import           Linear
 
 import           HaScene
 --   show :: Mesh -> String
+
+getNorm :: Triangle -> V3 Float
+getNorm (V3 v0 v1 v2) = normalize $ cross (normalize $ v0 - v1) (normalize $ v0 - v2)
+
 sortTriangle :: Triangle -> Triangle
 sortTriangle (V3 v0 v1 v2) = let
     [v0', v1', v2'] = sortBy (\(V3 _ y1 _) (V3 _ y2 _) -> compare y1 y2) [v0, v1, v2]
@@ -35,16 +39,17 @@ sortTriangle (V3 v0 v1 v2) = let
 
 viewMatrix :: Camera -> M44 Float
 viewMatrix cam = let
-    dir = normalize $ _dir cam
-    up = normalize $ _up cam
+    z = - (normalize $ _dir cam)
+    y = normalize $ _up cam
+    x = normalize $ cross y z
+    invRotM = V3 x y z
     pos = _pos cam
-    lookat = lookAt pos (pos+dir) up
-    -- projection = perspective 60 (16/9) 0.1 50
-    in lookat
-    -- -- in transpose V4 (V4 (right^._x)   (right^._y)  (right^._z)    0)
-    -- --       (V4 (up'^._x)     (up'^._y)    (up'^._z)      0)
-    -- --       (V4 (dir^._x)     (dir^._y)    (dir^._z)      0)
-    -- --       (V4 (pos^._x)     (pos^._y)    (pos^._z)      1)
+    V3 vx vy vz = - (invRotM !* pos)
+    V3 (V3 mxx mxy mxz) (V3 myx myy myz) (V3 mzx mzy mzz) = invRotM
+    in V4   (V4 mxx mxy mxz vx)
+            (V4 myx myy myz vy)
+            (V4 mzx mzy mzz vz)
+            (V4 0   0   0   1 )
 
 -- eulerMatrix :: V3 Float -> M33 Float
 -- eulerMatrix (V3 a b c) = let
@@ -69,29 +74,34 @@ projMatrix :: Float -> Float -> Float -> Float -> M44 Float
 projMatrix fov aspectRatio zNear zFar = let
     invTan = 1 / tan (fov / 180 * pi * 0.5)
     k = 1 / (zNear - zFar)
-    in V4   (V4 (invTan/aspectRatio) 0       0                0               )
-            (V4 0                    invTan  0                0               )
-            (V4 0                    0       ((zNear+zFar)*k) (2*zFar*zNear*k))
-            (V4 0                    0       1                0               )
+    in V4   (V4 (invTan/aspectRatio) 0       0                0                )
+            (V4 0                    invTan  0                0                )
+            (V4 0                    0       ((zNear+zFar)*k) (-2*zFar*zNear*k))
+            (V4 0                    0       1                0                )
 
-transVert :: M44 Float -> V3 Float -> V3 Float
-transVert mvpM (V3 x y z) = normalizePoint (mvpM !* V4 x y z 1)
+transVec3 :: M44 Float -> V3 Float -> V3 Float
+transVec3 m (V3 x y z) = normalizePoint (m !* V4 x y z 1)
 
 transTriangle :: M44 Float -> Triangle -> Triangle
 transTriangle mvpM (V3 v0 v1 v2) =
-    V3 (transVert mvpM v0) (transVert mvpM v1) (transVert mvpM v2)
+    V3 (transVec3 mvpM v0) (transVec3 mvpM v1) (transVec3 mvpM v2)
 
-faceCulling :: [Triangle] -> [Triangle]
+faceCulling :: [(Triangle, V3 Float)] -> [(Triangle, V3 Float)]
 faceCulling ts = let
-    isOut (V3 (V3 x0 y0 _) (V3 x1 y1 _) (V3 x2 y2 _)) = (x1-x0)*(y2-y1) > (x2-x1)*(y1-y0)
+    isOut (V3 (V3 x0 y0 _) (V3 x1 y1 _) (V3 x2 y2 _), V3 _ _ z) = z > 0
     in filter isOut ts
 
-vertShader :: Camera -> Mesh -> [Triangle]
+vertShader :: Camera -> Mesh -> [(Triangle, V3 Float)]
 vertShader cam m = let
+    tris = _triangles m
     viewM = viewMatrix cam
     projM = projMatrix 45 1 (-0.1) (-50)
-    mvpM  = projM !*! viewM
-    in map (transTriangle mvpM) (_triangles m)
+    isFront (V3 (V3 _ _ z0) (V3 _ _ z1) (V3 _ _ z2)) = z0 < 0 && z1 < 0 && z2 < 0
+    -- mvpM  = viewM
+    trisCamera = filter isFront $ map (transTriangle viewM) tris
+    ns = map (normalize.getNorm) trisCamera
+    trisProj = map (transTriangle projM) trisCamera
+    in zip trisProj ns
 
 fragShader :: V3 Float -> V3 Float -> Char
 fragShader light n = let
@@ -116,8 +126,8 @@ berycentric2D x y (V3 (V3 x0 y0 _) (V3 x1 y1 _) (V3 x2 y2 _)) = let
     w = 1 - u - v
     in V3 u v w
 
-rasterize :: Int -> Int -> Triangle -> [((Int, Int), Float, Char)]
-rasterize w h t@(V3 v0 v1 v2) = let
+rasterize :: Int -> Int -> (Triangle, V3 Float) -> [((Int, Int), Float, Char)]
+rasterize w h (t@(V3 v0 v1 v2), n) = let
     -- sort triangle verts by y
     [V3 xMin yMin zMin, V3 xMid yMid zMid, V3 xMax yMax zMax] =
         sortBy (\(V3 _ y1 _) (V3 _ y2 _) -> compare y1 y2) [v0, v1, v2]
@@ -153,9 +163,8 @@ rasterize w h t@(V3 v0 v1 v2) = let
         beryCoord = berycentric2D x y t
         in perspectInterp (V3 zMin zMid zMax) beryCoord (V3 zMin zMid zMax)
     -- Just Use Flat Shader
-    n = normalize $ cross (normalize $ v0-v2) (normalize $ v1-v2)
     -- n = normalize $ cross v0 v1
-    color = fragShader (normalize (V3 1 1 (-1))) n
+    color = fragShader (normalize (V3 (-1) 0 (-0.5))) n
     -- index range of y
     yyd = y2yy (yMin + dy / 2)
     yyu = y2yy (yMax - dy / 2)
@@ -165,13 +174,13 @@ rasterize w h t@(V3 v0 v1 v2) = let
 render :: Int -> Int -> [Mesh] -> Camera -> String
 render w h ms cam = elems $ runSTUArray $ do
     -- Z-buffer for distances
-    zbuf <- newArray ((0, 0),(h-1, w-1)) (1.0/0.0) :: ST s (STUArray s (Int,Int) Float)
+    zbuf <- newArray ((0, 0),(h-1, w-1)) (-1.0/0.0) :: ST s (STUArray s (Int,Int) Float)
     -- frame buffer for pixels
     fbuf <- newArray ((0, 0),(h-1, w)) ' '       :: ST s (STUArray s (Int,Int) Char)
     let pixels = concatMap (rasterize w h) $ faceCulling $ concatMap (vertShader cam) ms
     mapM_ (\((xx, yy), z, c) -> do
             z0 <- readArray zbuf (yy,xx)
-            if z < z0
+            if z > z0 && z < 0
             then do
                 writeArray zbuf (yy,xx) z
                 writeArray fbuf (yy,xx) c
