@@ -97,13 +97,18 @@ handleEvent ui (VtyEvent (V.EvKey (V.KChar 'S') [])) =
   editOrView (moveMesh Down $ ui^.selected) (move Down) ui
 
 handleEvent ui (VtyEvent (V.EvKey V.KLeft       [])) =
-  editOrView emptyOp (rotate RLeft) ui
+  editOrView (rotateMesh RLeft $ ui^.selected) (rotate RLeft) ui
 handleEvent ui (VtyEvent (V.EvKey V.KRight      [])) =
-  editOrView emptyOp (rotate RRight) ui
+  editOrView (rotateMesh RRight $ ui^.selected) (rotate RRight) ui
 handleEvent ui (VtyEvent (V.EvKey V.KDown       [])) =
-  editOrView emptyOp (rotate RDown) ui
+  editOrView (rotateMesh RDown $ ui^.selected) (rotate RDown) ui
 handleEvent ui (VtyEvent (V.EvKey V.KUp         [])) =
-  editOrView emptyOp (rotate RUp) ui
+  editOrView (rotateMesh RUp $ ui^.selected) (rotate RUp) ui
+handleEvent ui (VtyEvent (V.EvKey V.KLeft       [V.MShift])) =
+  editOrView (rotateMesh RLeftR $ ui^.selected) (rotate RLeftR) ui
+handleEvent ui (VtyEvent (V.EvKey V.KRight      [V.MShift])) =
+  editOrView (rotateMesh RRightR $ ui^.selected) (rotate RRightR) ui
+
 
 handleEvent ui (VtyEvent (V.EvKey V.KEsc        [])) = halt ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'i') [])) =
