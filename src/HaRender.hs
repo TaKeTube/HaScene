@@ -9,6 +9,7 @@ import           Data.Array.MArray
 import           Data.Array.ST
 import           Data.Array.Unboxed
 import           Data.List          (sortBy)
+import           Data.Char          (intToDigit)
 
 import           Control.Lens       hiding (Empty)
 import           GHC.Float
@@ -83,8 +84,10 @@ vertShader cam m = let
 fragShader :: V3 Float -> V3 Float -> Char
 fragShader light n = let
     colorMap = ".,-~:;!*=#$@"
-    colorLen = length colorMap - 1
-    idx = max 0 $ round (int2Float colorLen * max 0 (dot (-light) n))
+    -- colorLen = length colorMap - 1
+    -- idx = max 0 $ round (int2Float colorLen * max 0 (dot (-light) n))
+    colorLen = length colorMap
+    idx = min (colorLen - 1) $ max 0 $ round (int2Float colorLen * max 0 (dot (-light) n))
     -- idx = round (int2Float colorLen * (dot (-light) n * 0.5 + 0.5))
     in colorMap !! idx
 
@@ -154,7 +157,7 @@ render w h ms cam = elems $ runSTUArray $ do
     -- frame buffer for pixels
     fbuf <- newArray ((0, 0),(h-1, w)) ' '       :: ST s (STUArray s (Int,Int) Char)
     -- set fragment shader
-    let light = normalize (V3 (-1) 0 (-0.5))
+    let light = normalize (V3 (-1) (-0.7) (-0.5))
     let viewM = viewMatrix cam
     let light' = normalize $ transVec3 viewM light
     -- rasterize triangles

@@ -17,7 +17,7 @@ module HaScene
   -- data structures
   , Game(..)
   , HaScene
-  , Direction(..), RDirection(..)
+  , Direction(..), RDirection(..), SDirection(..)
   , Coord(..)
   , Triangle(..)
   , Mesh(..)
@@ -94,6 +94,8 @@ data Direction = Left | Right | Back | Forward | Up | Down
   deriving (Eq, Show)
 data RDirection = RLeft | RRight | RUp | RDown | RLeftR | RRightR
   deriving (Eq, Show)
+data SDirection = ScaleUp | ScaleDown
+  deriving (Eq, Show)
 
 -- | Game state
 data Game = Game
@@ -142,15 +144,17 @@ meshStepS = 0.05
 instance Translatable Coord where
   translateBy n Forward dir (V3 x y z)    =
     let
-      dx = (dir ^. _x) * n
-      dz = (dir ^. _z) * n
+      dir_proj = normalize (V3 (dir ^. _x) 0 (dir ^. _z))
+      dx = (dir_proj ^. _x) * n
+      dz = (dir_proj ^. _z) * n
       in
     V3 (x+dx) y (z+dz)
   translateBy n Back dir c   = translateBy (-n) Forward dir c
   translateBy n Left dir (V3 x y z)    =
     let
-      dx = - (dir ^. _z) * n
-      dz = (dir ^. _x) * n
+      dir_proj = normalize (V3 (dir ^. _x) 0 (dir ^. _z))
+      dx = - (dir_proj ^. _z) * n
+      dz = (dir_proj ^. _x) * n
       in
     V3 (x+dx) y (z+dz)
   translateBy n Right dir c = translateBy (-n) Left dir c
@@ -255,8 +259,8 @@ rotateMesh dir selected = do
       RRightR -> V3 0 0 (-meshStepR))
     target
 
-scaleMesh :: Int -> HaScene ()
-scaleMesh selected = do
+scaleMesh :: SDirection -> Int -> HaScene ()
+scaleMesh dir selected = do
   -- Retrieve the current Game instance from the HaScene monad
   game <- get
 
@@ -268,7 +272,9 @@ scaleMesh selected = do
     objects.ix selected .~
     translateMesh
     Scale
-    (V3 (1 + meshStepS) 0 0)
+    (case dir of
+      ScaleUp -> (V3 (1 + meshStepS) 0 0)
+      ScaleDown -> (V3 (1 - meshStepS) 0 0))
     target
 
 

@@ -109,6 +109,10 @@ handleEvent ui (VtyEvent (V.EvKey V.KLeft       [V.MShift])) =
 handleEvent ui (VtyEvent (V.EvKey V.KRight      [V.MShift])) =
   editOrView (rotateMesh RRightR $ ui^.selected) (rotate RRightR) ui
 
+handleEvent ui (VtyEvent (V.EvKey V.KUp       [V.MShift])) =
+  editOrView (scaleMesh ScaleUp $ ui^.selected) emptyOp ui
+handleEvent ui (VtyEvent (V.EvKey V.KDown      [V.MShift])) =
+  editOrView (scaleMesh ScaleDown $ ui^.selected) emptyOp ui
 
 handleEvent ui (VtyEvent (V.EvKey V.KEsc        [])) = halt ui
 handleEvent ui (VtyEvent (V.EvKey (V.KChar 'i') [])) =
