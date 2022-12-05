@@ -181,21 +181,32 @@ boardHeight = 20
 
 defaultScene :: String -> IO [Mesh]
 defaultScene filename = do
-  obj1 <- buildMesh "src/models/hat.obj" "hat"
+  temp <- buildMesh "src/models/hat.obj" "hat"
+  let obj1 = translateMesh Move (translate 1 Right (V3 0 0 (-1)) (V3 0 0 0)) $
+             translateMesh Scale (V3 1.5 0 0) temp
 
   temp <- buildMesh "src/models/cube.obj" "cube"
   let obj2 = translateMesh Move (translate 2 Left (V3 0 0 (-1)) (V3 0 0 0)) $
-             translateMesh Scale (V3 0.5 0 0) temp
+             translateMesh Scale (V3 0.8 0 0) temp
 
-  temp <- buildMesh "src/models/low-poly-fox.obj" "fox"
-  let obj3 = translateMesh Move (translate 50 Forward (V3 0 0 (-1)) (V3 0 0 0)) $
-             translateMesh Rotate (V3 0 (0.5*pi) 0) $
-             translateMesh Scale (V3 0.5 0 0) temp
+  -- temp <- buildMesh "src/models/low-poly-fox.obj" "fox"
+  -- let obj3 = translateMesh Move (translate 50 Forward (V3 0 0 (-1)) (V3 0 0 0)) $
+  --            translateMesh Rotate (V3 0 (0.5*pi) 0) $
+  --            translateMesh Scale (V3 0.5 0 0) temp
+
+  temp <- buildMesh "src/models/bunny.obj" "bunny"
+  let obj3 = translateMesh Move (translate 8 Left (V3 0 0 (-1)) (V3 0 0 0)) $
+             translateMesh Move (translate 1 Down (V3 0 0 (-1)) (V3 0 0 0)) $
+             translateMesh Scale (V3 30.0 0 0) temp
 
   temp <- buildMesh "src/models/pirate-ship.obj" "ship"
   let obj4 = translateMesh Move (translate 5 Right (V3 0 0 (-1)) (V3 0 0 0)) temp
 
-  return [obj1, obj2, obj3, obj4]
+  temp <- buildMesh "src/models/dragon.obj" "dragon"
+  let obj5 = translateMesh Move (translate 10 Forward (V3 0 0 (-1)) (V3 0 0 0)) $
+              translateMesh Scale (V3 1.2 0 0) temp
+
+  return [obj1, obj2, obj3, obj4, obj5]
 
 defaultCamera :: Camera
 defaultCamera = Camera

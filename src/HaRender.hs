@@ -74,18 +74,18 @@ vertShader cam m = let
     tris = _triangles m
     viewM = viewMatrix cam
     projM = projMatrix 60 1 (-0.1) (-100)
+    -- transform to camera space and cull triangles at the back
     isFront (V3 (V3 _ _ z0) (V3 _ _ z1) (V3 _ _ z2)) = z0 < 0 && z1 < 0 && z2 < 0
-    -- mvpM  = viewM
     trisCamera = filter isFront $ map (transTriangle viewM) tris
+    -- compute norm at camera space
     ns = map (normalize.getNorm) trisCamera
+    -- projection
     trisProj = map (transTriangle projM) trisCamera
     in zip trisProj ns
 
 fragShader :: V3 Float -> V3 Float -> Char
 fragShader light n = let
     colorMap = ".,-~:;!*=#$@"
-    -- colorLen = length colorMap - 1
-    -- idx = max 0 $ round (int2Float colorLen * max 0 (dot (-light) n))
     colorLen = length colorMap
     idx = min (colorLen - 1) $ max 0 $ round (int2Float colorLen * max 0 (dot (-light) n))
     -- idx = round (int2Float colorLen * (dot (-light) n * 0.5 + 0.5))
@@ -106,6 +106,7 @@ berycentric2D x y (V3 (V3 x0 y0 _) (V3 x1 y1 _) (V3 x2 y2 _)) = let
     w = 1 - u - v
     in V3 u v w
 
+-- scan line algorithm
 rasterize :: Int -> Int -> (V3 Float -> Char) -> (Triangle, V3 Float) -> [((Int, Int), Float, Char)]
 rasterize w h fShader (t@(V3 v0 v1 v2), n) = let
     -- sort triangle verts by y
@@ -155,7 +156,7 @@ render w h ms cam = elems $ runSTUArray $ do
     -- Z-buffer for distances
     zbuf <- newArray ((0, 0),(h-1, w-1)) (-1.0/0.0) :: ST s (STUArray s (Int,Int) Float)
     -- frame buffer for pixels
-    fbuf <- newArray ((0, 0),(h-1, w)) ' '       :: ST s (STUArray s (Int,Int) Char)
+    fbuf <- newArray ((0, 0),(h-1, w)) ' '          :: ST s (STUArray s (Int,Int) Char)
     -- set fragment shader
     let light = normalize (V3 (-1) (-0.7) (-0.5))
     let viewM = viewMatrix cam
