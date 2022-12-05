@@ -17,7 +17,7 @@ module HaScene
   -- data structures
   , Game(..)
   , HaScene
-  , Direction(..), RDirection(..)
+  , Direction(..), RDirection(..), SDirection(..)
   , Coord(..)
   , Triangle(..)
   , Mesh(..)
@@ -71,6 +71,9 @@ type Triangle = V3 Coord
 data Mesh = Mesh
   { _triangles :: [Triangle]
   , _name      :: String
+  , _center    :: Coord
+  -- , _dir       :: Coord
+  -- , _up        :: Coord
   }
   deriving (Eq)
 makeLenses ''Mesh
@@ -89,7 +92,9 @@ makeLenses ''Camera
 
 data Direction = Left | Right | Back | Forward | Up | Down
   deriving (Eq, Show)
-data RDirection = RLeft | RRight | RUp | RDown
+data RDirection = RLeft | RRight | RUp | RDown | RLeftR | RRightR
+  deriving (Eq, Show)
+data SDirection = ScaleUp | ScaleDown
   deriving (Eq, Show)
 
 -- | Game state
@@ -132,33 +137,41 @@ meshStep = 0.05
 
 meshStepR::Float
 meshStepR = 0.05
+
+meshStepS::Float
+meshStepS = 0.05
+
 instance Translatable Coord where
   translateBy n Forward dir (V3 x y z)    =
     let
-      dx = (dir ^. _x) * n
-      dz = (dir ^. _z) * n
+      dir_proj = normalize (V3 (dir ^. _x) 0 (dir ^. _z))
+      dx = (dir_proj ^. _x) * n
+      dz = (dir_proj ^. _z) * n
       in
     V3 (x+dx) y (z+dz)
   translateBy n Back dir c   = translateBy (-n) Forward dir c
   translateBy n Left dir (V3 x y z)    =
     let
-      dx = - (dir ^. _z) * n
-      dz = (dir ^. _x) * n
+      dir_proj = normalize (V3 (dir ^. _x) 0 (dir ^. _z))
+      dx = - (dir_proj ^. _z) * n
+      dz = (dir_proj ^. _x) * n
       in
     V3 (x+dx) y (z+dz)
   translateBy n Right dir c = translateBy (-n) Left dir c
   translateBy n Up _ (V3 x y z)        = V3 x (y+n) z
   translateBy n Down d c               = translateBy (-n) Up d c
 
-  translateRBy n RLeft v3  = normalize $ transpose (eulerMatrix (V3 0 n    0)) !* v3
+  translateRBy n RLeft v3  = transpose (eulerMatrix (V3 0 n    0)) !* v3
   translateRBy n RRight v3 = translateRBy (-n) RLeft v3
-  translateRBy n RUp v3    = normalize $ eulerMatrix (V3 n    0    0) !* v3
+  translateRBy n RUp v3    = eulerMatrix (V3 n    0    0) !* v3
   translateRBy n RDown v3 = translateRBy (-n) RUp v3
+  translateRBy n RLeftR v3  = eulerMatrix (V3 0 0    n) !* v3
+  translateRBy n RRightR v3 = translateRBy (-n) RLeftR v3
 
 instance Translatable Camera where
   translateBy n op dir cam = cam & pos %~ translateBy n op dir
-  translateRBy n d c = c & dir %~ translateRBy n d
-                         & up  %~ translateRBy n d
+  translateRBy n d c = c & dir %~ normalize . translateRBy n d
+                         & up  %~ normalize . translateRBy n d
 
 -- | Visible, active board size
 boardWidth, boardHeight :: Int
@@ -226,11 +239,43 @@ moveMesh d selected = do
 
 rotateMesh :: RDirection -> Int -> HaScene ()
 rotateMesh dir selected = do
-  return ()
+  -- Retrieve the current Game instance from the HaScene monad
+  game <- get
 
-scaleMesh :: RDirection -> Int -> HaScene ()
+  let target = (game ^. objects) !! selected
+
+  -- Update the value of the selected object using the .~ operator
+  put $
+    game &
+    objects.ix selected .~
+    translateMesh
+    Rotate
+    (case dir of
+      RLeft -> V3 0 (-meshStepR) 0
+      RRight -> V3 0 meshStepR 0
+      RUp -> V3 meshStepR  0    0
+      RDown -> V3 (-meshStepR)  0    0
+      RLeftR -> V3 0 0 meshStepR
+      RRightR -> V3 0 0 (-meshStepR))
+    target
+
+scaleMesh :: SDirection -> Int -> HaScene ()
 scaleMesh dir selected = do
-  return ()
+  -- Retrieve the current Game instance from the HaScene monad
+  game <- get
+
+  let target = (game ^. objects) !! selected
+
+  -- Update the value of the selected object using the .~ operator
+  put $
+    game &
+    objects.ix selected .~
+    translateMesh
+    Scale
+    (case dir of
+      ScaleUp -> (V3 (1 + meshStepS) 0 0)
+      ScaleDown -> (V3 (1 - meshStepS) 0 0))
+    target
 
 
 data MeshOp = Move | Rotate | Scale
@@ -240,15 +285,37 @@ translateMesh :: MeshOp -> Coord -> Mesh -> Mesh
 translateMesh Move mv mesh =
   Mesh{
     _triangles = map f (_triangles mesh),
-    _name = _name mesh
+    _name = _name mesh,
+    _center = (_center mesh) + mv
   }
   where
     f t = t + V3 mv mv mv
 
 -- | a is the eular angle. Extrinsic rotation
-translateMesh Rotate a b   = b
+translateMesh Rotate angles mesh   = 
+  Mesh{
+    _triangles = map (fmap f') (_triangles mesh),
+    _name = _name mesh,
+    _center = center
+  }
+  where
+    rotateMat = eulerMatrix angles
+    center = _center mesh
+    f' :: Coord -> Coord
+    f' v = rotateMat !* (v - center) + center
+
 -- | a[0] is the multiplier
-translateMesh Scale a b    = b
+translateMesh Scale a mesh  = 
+  Mesh{
+    _triangles = map (fmap f') (_triangles mesh),
+    _name = _name mesh,
+    _center = center
+  }
+  where
+    scale = a ^. _x
+    center = _center mesh
+    f' :: Coord -> Coord
+    f' v = fmap (scale *) (v - center) + center
 
 -- Parse files and build Objects
 buildMesh:: FilePath -> String -> IO Mesh
@@ -258,7 +325,9 @@ buildMesh filepath name= do
         f (x, y, z) = V3 x y z
     let fs = map f2 fsraw
         f2 (x, y, z) = V3 (vs !! (x-1)) (vs !! (y-1)) (vs !! (z-1))
-    return Mesh {_triangles=fs,_name=name}
+    return Mesh { _triangles=fs,
+                  _name=name,
+                  _center = V3 0 0 0}
 
 split :: (Eq a) => a -> [a] -> [[a]]
 split d xs = split' d (reverse xs)
