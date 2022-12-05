@@ -122,10 +122,10 @@ class Translatable s where
   translateRBy :: Float -> RDirection -> s -> s
 
 camStep::Float
-camStep = 0.01
+camStep = 0.05
 
 camStepR::Float
-camStepR = 0.01
+camStepR = 0.05
 
 meshStep::Float
 meshStep = 0.05
@@ -174,7 +174,7 @@ defaultScene filename = do
 defaultCamera :: Camera
 defaultCamera = Camera
   {
-    _pos = V3 0 0 6
+    _pos = V3 (-3) 2 6
   , _dir = V3 0 0 (-1)
   , _up  = V3 0 1 0
   }

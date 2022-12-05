@@ -72,7 +72,7 @@ vertShader :: Camera -> Mesh -> [(Triangle, V3 Float)]
 vertShader cam m = let
     tris = _triangles m
     viewM = viewMatrix cam
-    projM = projMatrix 45 1 (-0.1) (-50)
+    projM = projMatrix 60 1 (-0.1) (-50)
     isFront (V3 (V3 _ _ z0) (V3 _ _ z1) (V3 _ _ z2)) = z0 < 0 && z1 < 0 && z2 < 0
     -- mvpM  = viewM
     trisCamera = filter isFront $ map (transTriangle viewM) tris
