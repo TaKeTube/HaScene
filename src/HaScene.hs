@@ -161,15 +161,16 @@ instance Translatable Coord where
   translateBy n Up _ (V3 x y z)        = V3 x (y+n) z
   translateBy n Down d c               = translateBy (-n) Up d c
 
-  translateRBy n RLeft v3  = transpose (eulerMatrix (V3 0 n    0)) !* v3
-  translateRBy n RRight v3 = translateRBy (-n) RLeft v3
-  translateRBy n RUp v3    = eulerMatrix (V3 n    0    0) !* v3
-  translateRBy n RDown v3 = translateRBy (-n) RUp v3
+  translateRBy n RLeft v3   = transpose (eulerMatrix (V3 0 n    0)) !* v3
+  translateRBy n RRight v3  = translateRBy (-n) RLeft v3
+  translateRBy n RUp v3     = eulerMatrix (V3 n    0    0) !* v3
+  translateRBy n RDown v3   = translateRBy (-n) RUp v3
   translateRBy n RLeftR v3  = eulerMatrix (V3 0 0    n) !* v3
   translateRBy n RRightR v3 = translateRBy (-n) RLeftR v3
 
 instance Translatable Camera where
   translateBy n op dir cam = cam & pos %~ translateBy n op dir
+  translateRBy :: Float -> RDirection -> Camera -> Camera
   translateRBy n d c = c & dir %~ normalize . translateRBy n d
                          & up  %~ normalize . translateRBy n d
 
@@ -181,13 +182,25 @@ boardHeight = 20
 defaultScene :: String -> IO [Mesh]
 defaultScene filename = do
   obj1 <- buildMesh "src/models/hat.obj" "hat"
-  obj2 <- buildMesh "src/models/cube.obj" "cube"
-  return [obj1, obj2]
+
+  temp <- buildMesh "src/models/cube.obj" "cube"
+  let obj2 = translateMesh Move (translate 2 Left (V3 0 0 (-1)) (V3 0 0 0)) $
+             translateMesh Scale (V3 0.5 0 0) temp
+
+  temp <- buildMesh "src/models/low-poly-fox.obj" "fox"
+  let obj3 = translateMesh Move (translate 50 Forward (V3 0 0 (-1)) (V3 0 0 0)) $
+             translateMesh Rotate (V3 0 (0.5*pi) 0) $
+             translateMesh Scale (V3 0.5 0 0) temp
+
+  temp <- buildMesh "src/models/pirate-ship.obj" "ship"
+  let obj4 = translateMesh Move (translate 5 Right (V3 0 0 (-1)) (V3 0 0 0)) temp
+
+  return [obj1, obj2, obj3, obj4]
 
 defaultCamera :: Camera
 defaultCamera = Camera
   {
-    _pos = V3 (-3) 2 6
+    _pos = V3 0 1 5
   , _dir = V3 0 0 (-1)
   , _up  = V3 0 1 0
   }
@@ -251,11 +264,11 @@ rotateMesh dir selected = do
     translateMesh
     Rotate
     (case dir of
-      RLeft -> V3 0 (-meshStepR) 0
-      RRight -> V3 0 meshStepR 0
-      RUp -> V3 meshStepR  0    0
-      RDown -> V3 (-meshStepR)  0    0
-      RLeftR -> V3 0 0 meshStepR
+      RLeft   -> V3 0 (-meshStepR) 0
+      RRight  -> V3 0 meshStepR 0
+      RUp     -> V3 meshStepR  0    0
+      RDown   -> V3 (-meshStepR)  0    0
+      RLeftR  -> V3 0 0 meshStepR
       RRightR -> V3 0 0 (-meshStepR))
     target
 
@@ -273,8 +286,8 @@ scaleMesh dir selected = do
     translateMesh
     Scale
     (case dir of
-      ScaleUp -> (V3 (1 + meshStepS) 0 0)
-      ScaleDown -> (V3 (1 - meshStepS) 0 0))
+      ScaleUp   -> V3 (1 + meshStepS) 0 0
+      ScaleDown -> V3 (1 - meshStepS) 0 0)
     target
 
 
@@ -286,13 +299,13 @@ translateMesh Move mv mesh =
   Mesh{
     _triangles = map f (_triangles mesh),
     _name = _name mesh,
-    _center = (_center mesh) + mv
+    _center = _center mesh + mv
   }
   where
     f t = t + V3 mv mv mv
 
 -- | a is the eular angle. Extrinsic rotation
-translateMesh Rotate angles mesh   = 
+translateMesh Rotate angles mesh   =
   Mesh{
     _triangles = map (fmap f') (_triangles mesh),
     _name = _name mesh,
@@ -305,7 +318,7 @@ translateMesh Rotate angles mesh   =
     f' v = rotateMat !* (v - center) + center
 
 -- | a[0] is the multiplier
-translateMesh Scale a mesh  = 
+translateMesh Scale a mesh  =
   Mesh{
     _triangles = map (fmap f') (_triangles mesh),
     _name = _name mesh,
