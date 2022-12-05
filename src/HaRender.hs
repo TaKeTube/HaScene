@@ -131,13 +131,13 @@ rasterize w h t@(V3 v0 v1 v2) = let
     -- find bounds of x for a given y
     lerpx x1 y1 x2 y2 y = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
     xBoundVert y
-        | y <= yMin = yMin
-        | y >= yMax = yMax
+        | y <= yMin = xMin
+        | y >= yMax = xMax
         | y >= yMid = lerpx xMax yMax xMid yMid y
         | otherwise = lerpx xMin yMin xMid yMid y
     xBoundEdge y
-        | y <= yMin = yMin
-        | y >= yMax = yMax
+        | y <= yMin = xMin
+        | y >= yMax = xMax
         | otherwise = lerpx xMax yMax xMin yMin y
     xxBound yy = let
         y = yy2y yy
