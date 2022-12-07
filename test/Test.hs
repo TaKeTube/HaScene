@@ -1,7 +1,6 @@
 
 {-# LANGUAGE ScopedTypeVariables #-}
 
-
 import           Data.IORef
 import           Test.Tasty
 import           Test.Tasty.HUnit
@@ -13,7 +12,6 @@ import           Text.Printf
 import           System.FilePath
 import           Linear
 import qualified Test.QuickCheck as QC
-
 import qualified HaScene             as SC
 -- import qualified CSE230.WhilePlus.Types as W
 -- import qualified CSE230.WhilePlus.Eval  as W
@@ -24,29 +22,34 @@ type Score = IORef (Int, Int)
 
 main :: IO ()
 main = runTests 
-  [ unitTest
---   , genTest
+  [ 
+    unitTest
   ]
 
 unitTest ::  Score -> TestTree
 unitTest sc = testGroup "WhilePlus" 
-  [ scoreTest ((\_ -> SC.eulerMatrix (V3 0 0 0)),  (), SC.indentityMatrix, 10, "test-1")
+  [ 
+    runTest (SC.eulerMatrix,  (V3 0 0 0), SC.indentityMatrix, 0, "Euler Matrix calc"),
+    runTest (SC.eulerMatrix,  (V3 1 1 1), SC.mat111, 0, "Euler Matrix calc"),
+    runTest (SC.eulerMatrix,  (V3 0 2 0), SC.mat020, 0, "Euler Matrix calc"),
+    runTest (SC.eulerMatrix,  (V3 0 0 1), SC.mat001, 0, "Euler Matrix calc"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["v","0","0","0"]])),  (), ([(0.0,0.0,0.0)],[]), 0, "vertex parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["v","1","0","1"]])),  (), ([(1.0,0.0,1.0)],[]), 0, "vertex parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["v","0","0","0"],["v","1","0","1"]])),  (), ([(1.0,0.0,1.0),(0.0,0.0,0.0)],[]), 0, "multi vertex parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["v","0","1","0"],["v","1","0","1"]])),  (), ([(1.0,0.0,1.0),(0.0,1.0,0.0)],[]), 0, "multi vertex parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["v","0","1","0"],["v","1","0"]])),  (), ([(0.0,1.0,0.0)],[]), 0, "multi invalid vertex parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["f","0","0","0","0"]])),  (), ([],[(0,0,0),(0,0,0)]), 0, "faces parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["f","1","2","3","4"]])),  (), ([],[(1,2,3),(1,3,4)]), 0, "faces parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["f","1","2","3","4"],["f","2","3","4","5"]])),  (), ([],[(2,3,4),(2,4,5),(1,2,3),(1,3,4)]), 0, "multi faces parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["f","1","2","3"]])),  (), ([],[(1,2,3)]), 0, "special face parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["v","1","0","1"],["f","1","2","3","4"]])),  (), ([(1.0,0.0,1.0)],[(1,2,3),(1,3,4)]), 0, "faces + vertex parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["f","1","2","3","4"],["v","1","0","1"]])),  (), ([(1.0,0.0,1.0)],[(1,2,3),(1,3,4)]), 0, "faces + vertex parse"),
+    runTest ((\_ -> (foldl SC.updatevf ([],[]) [["f","1","2","3","4"],["v","1","0"]])),  (), ([],[(1,2,3),(1,3,4)]), 0, "invalid faces + vertex parse")
+    -- runTest (SC.readOBJ,  "src/models/test.obj", rst, 0, "read file")
   ]
   where
-    scoreTest :: (Show b, Eq b) => (a -> b, a, b, Int, String) -> TestTree
-    scoreTest (f, x, r, n, msg) = scoreTest' sc (return . f, x, r, n, msg)
-
--- genTest :: Score -> TestTree
--- genTest sc = testGroup "BinSearchTree"
---   [ scoreProp sc ("prop_insert_bso"      , BST.prop_insert_bso     , 3) 
---   , scoreProp sc ("prop_insert_map"      , BST.prop_insert_map     , 4)
---   , scoreProp sc ("prop_delete_bso"      , BST.prop_delete_bso     , 6)
---   , scoreProp sc ("prop_delete_map"      , BST.prop_delete_map     , 6)
---   , scoreProp sc ("prop_genBalHeight"    , BST.prop_genBalHeight   , 2)
---   , scoreProp sc ("prop_genBalBalanced"  , BST.prop_genBalBalanced , 2)
---   , scoreProp sc ("prop_genBalBSO"       , BST.prop_genBalBSO      , 2)
---   ]
-
+    runTest :: ( Eq b) => (a -> b, a, b, Int, String) -> TestTree
+    runTest (f, x, r, n, msg) = runTest' sc (return . f, x, r, n, msg)
 
 
 runTests :: [Score -> TestTree] -> IO ()
@@ -63,20 +66,21 @@ tests x gs = testGroup "Tests" [ g x | g <- gs ]
 --------------------------------------------------------------------------------
 -- | Construct a single test case
 --------------------------------------------------------------------------------
-mkTest' :: (Show b, Eq b) => Score -> (a -> IO b) -> a -> b -> String -> TestTree
---------------------------------------------------------------------------------
-mkTest' sc f x r name = scoreTest' sc (f, x, r, 1, name)
+mkTest' :: (Eq b) => Score -> (a -> IO b) -> a -> b -> String -> TestTree
+-------------------------------------------------------------------------------
+mkTest' sc f x r name = runTest' sc (f, x, r, 1, name)
 
 --------------------------------------------------------------------------------
-scoreTest' :: (Show b, Eq b) => Score -> (a -> IO b, a, b, Int, String) -> TestTree
+runTest' :: (Eq b) => Score -> (a -> IO b, a, b, Int, String) -> TestTree
 --------------------------------------------------------------------------------
-scoreTest' sc (f, x, expR, points, name) =
+runTest' sc (f, x, expR, points, name) =
   testCase name $ do
     updateTotal sc points
     actR <- f x
     if actR == expR
       then updateCurrent sc points
-      else assertFailure "Wrong Result"
+      else assertFailure "(putStrLns(show actR))"
+      -- else assertFailure show(actR)
 
 updateTotal :: Score -> Int -> IO ()
 updateTotal sc n = modifyIORef sc (\(x, y) -> (x, y + n))
@@ -87,37 +91,3 @@ updateCurrent sc n = modifyIORef sc (\(x, y) -> (x + n, y))
 initScore :: IO Score
 initScore = newIORef (0, 0)
 
---------------------------------------------------------------------------------
-scoreProp :: (QC.Testable prop) => Score -> (String, prop, Int) -> TestTree
---------------------------------------------------------------------------------
-scoreProp sc (name, prop, n) = scoreTest' sc (act, (), True, n, name)
-  where
-    act _                    = QC.isSuccess <$> QC.labelledExamplesWithResult args prop
-    args                     = QC.stdArgs { QC.chatty = False, QC.maxSuccess = 100 }
-
---------------------------------------------------------------------------------
--- | Binary (Executable) Tests
---------------------------------------------------------------------------------
-data BinCmd = BinCmd
-  { bcCmd    :: String
-  , bcInF    :: FilePath
-  , bcExpF   :: FilePath
-  , bcPoints :: Int
-  , bcName   :: String
-  } deriving (Show)
-
-binTest :: Score -> BinCmd -> TestTree
-binTest sc b  = scoreTest' sc (act, (), True, bcPoints b, bcName b)
-  where act _ = mkBinTest (bcCmd b) (bcInF b) (bcExpF b)
-
-mkBinTest execS inF expF = do
-  hSetBuffering stdout LineBuffering -- or even NoBuffering
-  withFile log WriteMode $ \h -> do
-    (_,_,_,ph) <- createProcess $ (shell cmd) {std_out = UseHandle h, std_err = UseHandle h}
-    c          <- waitForProcess ph
-    expected   <- readFile expF
-    actual     <- readFile log
-    return (expected == actual)
-  where
-    log  = inF <.> "log"
-    cmd  = printf "%s < %s" execS inF
