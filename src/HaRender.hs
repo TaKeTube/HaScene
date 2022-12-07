@@ -46,11 +46,11 @@ viewMatrix cam = let
 projMatrix :: Float -> Float -> Float -> Float -> M44 Float
 projMatrix fov aspectRatio zNear zFar = let
     invTan = 1.0 / tan (fov / 180.0 * pi * 0.5)
-    k = 1.0 / (zNear - zFar)
-    in V4   (V4 (-(invTan/aspectRatio)) 0       0                0                )
-            (V4 0                    (-invTan)  0                0                )
+    k = 1.0 / (zFar - zNear)
+    in V4   (V4 (invTan/aspectRatio) 0       0                0                )
+            (V4 0                    invTan  0                0                )
             (V4 0                    0       ((zNear+zFar)*k) (-2*zFar*zNear*k))
-            (V4 0                    0       1                0                )
+            (V4 0                    0       (-1)             0                )
 
 transVec3 :: M44 Float -> V3 Float -> V3 Float
 transVec3 m (V3 x y z) = let
