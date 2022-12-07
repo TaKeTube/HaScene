@@ -26,6 +26,7 @@ module HaScene
   , camera, objects, initFile
   -- Constants
   , boardHeight, boardWidth
+  , indentityMatrix
   ) where
 
 import           Control.Applicative       ((<|>))
@@ -61,6 +62,12 @@ eulerMatrix (V3 a b c) = let
             (V3 sinc    cosc    0      )
             (V3 0       0       1      )
     in mc !*! mb !*! ma
+
+indentityMatrix :: M33 Float
+indentityMatrix = 
+  V3 (V3 1 0 0)
+     (V3 0 1 0)
+     (V3 0 0 1)
 
 -- | Coordinates
 type Coord = V3 Float
@@ -127,10 +134,10 @@ class Translatable s where
   translateRBy :: Float -> RDirection -> s -> s
 
 camStep::Float
-camStep = 0.01
+camStep = 0.05
 
 camStepR::Float
-camStepR = 0.01
+camStepR = 0.05
 
 meshStep::Float
 meshStep = 0.05
@@ -170,6 +177,7 @@ instance Translatable Coord where
 
 instance Translatable Camera where
   translateBy n op dir cam = cam & pos %~ translateBy n op dir
+  translateRBy :: Float -> RDirection -> Camera -> Camera
   translateRBy n d c = c & dir %~ normalize . translateRBy n d
                          & up  %~ normalize . translateRBy n d
 
@@ -180,14 +188,37 @@ boardHeight = 20
 
 defaultScene :: String -> IO [Mesh]
 defaultScene filename = do
-  obj1 <- buildMesh "src/models/hat.obj" "hat"
-  obj2 <- buildMesh "src/models/cube.obj" "cube"
-  return [obj1, obj2]
+  temp <- buildMesh "src/models/hat.obj" "hat"
+  let obj1 = translateMesh Move (translate 1 Right (V3 0 0 (-1)) (V3 0 0 0)) $
+             translateMesh Scale (V3 1.5 0 0) temp
+
+  temp <- buildMesh "src/models/cube.obj" "cube"
+  let obj2 = translateMesh Move (translate 2 Left (V3 0 0 (-1)) (V3 0 0 0)) $
+             translateMesh Scale (V3 0.8 0 0) temp
+
+  -- temp <- buildMesh "src/models/low-poly-fox.obj" "fox"
+  -- let obj3 = translateMesh Move (translate 50 Forward (V3 0 0 (-1)) (V3 0 0 0)) $
+  --            translateMesh Rotate (V3 0 (0.5*pi) 0) $
+  --            translateMesh Scale (V3 0.5 0 0) temp
+
+  temp <- buildMesh "src/models/bunny.obj" "bunny"
+  let obj3 = translateMesh Move (translate 8 Left (V3 0 0 (-1)) (V3 0 0 0)) $
+             translateMesh Move (translate 1 Down (V3 0 0 (-1)) (V3 0 0 0)) $
+             translateMesh Scale (V3 30.0 0 0) temp
+
+  temp <- buildMesh "src/models/pirate-ship.obj" "ship"
+  let obj4 = translateMesh Move (translate 5 Right (V3 0 0 (-1)) (V3 0 0 0)) temp
+
+  temp <- buildMesh "src/models/dragon.obj" "dragon"
+  let obj5 = translateMesh Move (translate 10 Forward (V3 0 0 (-1)) (V3 0 0 0)) $
+              translateMesh Scale (V3 1.2 0 0) temp
+
+  return [obj1, obj2, obj3, obj4, obj5]
 
 defaultCamera :: Camera
 defaultCamera = Camera
   {
-    _pos = V3 0 0 6
+    _pos = V3 0 1 5
   , _dir = V3 0 0 (-1)
   , _up  = V3 0 1 0
   }
@@ -292,7 +323,7 @@ translateMesh Move mv mesh =
     f t = t + V3 mv mv mv
 
 -- | a is the eular angle. Extrinsic rotation
-translateMesh Rotate angles mesh   = 
+translateMesh Rotate angles mesh   =
   Mesh{
     _triangles = map (fmap f') (_triangles mesh),
     _name = _name mesh,
@@ -305,7 +336,7 @@ translateMesh Rotate angles mesh   =
     f' v = rotateMat !* (v - center) + center
 
 -- | a[0] is the multiplier
-translateMesh Scale a mesh  = 
+translateMesh Scale a mesh  =
   Mesh{
     _triangles = map (fmap f') (_triangles mesh),
     _name = _name mesh,
