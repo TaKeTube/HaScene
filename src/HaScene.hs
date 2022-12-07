@@ -26,6 +26,7 @@ module HaScene
   , camera, objects, initFile
   -- Constants
   , boardHeight, boardWidth
+  , indentityMatrix
   ) where
 
 import           Control.Applicative       ((<|>))
@@ -61,6 +62,12 @@ eulerMatrix (V3 a b c) = let
             (V3 sinc    cosc    0      )
             (V3 0       0       1      )
     in mc !*! mb !*! ma
+
+indentityMatrix :: M33 Float
+indentityMatrix = 
+  V3 (V3 1 0 0)
+     (V3 0 1 0)
+     (V3 0 0 1)
 
 -- | Coordinates
 type Coord = V3 Float
