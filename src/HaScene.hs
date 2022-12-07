@@ -26,7 +26,7 @@ module HaScene
   , camera, objects, initFile
   -- Constants
   , boardHeight, boardWidth
-  , indentityMatrix
+  , indentityMatrix, readOBJ, updatevf, mat111, mat001,mat020
   ) where
 
 import           Control.Applicative       ((<|>))
@@ -68,6 +68,20 @@ indentityMatrix =
   V3 (V3 1 0 0)
      (V3 0 1 0)
      (V3 0 0 1)
+
+mat111:: M33 Float
+mat111 = V3 (V3 0.29192656 (-7.207501e-2) 0.9537211)
+            (V3 0.45464867 0.88774973 (-7.207501e-2))
+            (V3 (-0.84147096) 0.45464867 0.29192656)
+mat020:: M33 Float
+mat020 = V3 (V3 (-0.41614684) 0.0 0.9092974)
+            (V3 0.0 1.0 0.0) 
+            (V3 (-0.9092974) 0.0 (-0.41614684))
+mat001:: M33 Float
+mat001 =V3 (V3 0.5403023 (-0.84147096) 0.0) 
+           (V3 0.84147096 0.5403023 0.0)
+           (V3 0.0 0.0 1.0)
+
 
 -- | Coordinates
 type Coord = V3 Float
@@ -384,5 +398,8 @@ readOBJ :: FilePath -> IO ([(Float,Float,Float)],[(Int,Int,Int)])
 readOBJ fname = do
     contents <- readFile fname
     let lins    = map words (lines contents)
+    -- putStrLn (show lins)
     let (vs,fs) = foldl updatevf ([],[]) lins
+    let rst = (reverse vs,fs)
+    -- putStrLn (show rst)
     return (reverse vs,fs)
