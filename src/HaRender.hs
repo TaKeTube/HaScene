@@ -155,8 +155,10 @@ rasterize w h fShader (t@(V3 v0 v1 v2), n) = let
     -- apply fragment shader
     color = fShader n
     -- index range of y
-    yyd = y2yy (yMin + dy / 2.0)
-    yyu = y2yy (yMax - dy / 2.0)
+    -- yyd = y2yy (yMin + dy / 2.0)
+    -- yyu = y2yy (yMax - dy / 2.0)
+    yyd = y2yy yMin
+    yyu = y2yy yMax
     -- generate pixels
     in [((xx, yy), interpZ (xx2x xx) (yy2y yy), color) | yy <- [yyu..yyd], let (xxl,xxr) = xxBound yy, xx <- [xxl..xxr]]
 
@@ -179,7 +181,7 @@ render w h ms cam = elems $ runSTUArray $ do
             then do
                 writeArray zbuf (yy,xx) z
                 writeArray fbuf (yy,xx) c
-                -- writeArray fbuf (yy,xx) (intToDigit (round ((-z) * 15) `mod` 15))
+                -- writeArray fbuf (yy,xx) (intToDigit (round ((1-z) * 8) `mod` 16))
             else do return ()
         ) pixels
     forM_ [0..h-1] $ \j -> do
