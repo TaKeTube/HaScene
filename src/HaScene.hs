@@ -153,15 +153,15 @@ instance Translatable Coord where
   translateBy n Left dir (V3 x y z)    =
     let
       dir_proj = normalize (V3 (dir ^. _x) 0 (dir ^. _z))
-      dx = - (dir_proj ^. _z) * n
-      dz = (dir_proj ^. _x) * n
+      dx = (dir_proj ^. _z) * n
+      dz = -(dir_proj ^. _x) * n
       in
     V3 (x+dx) y (z+dz)
   translateBy n Right dir c = translateBy (-n) Left dir c
   translateBy n Up _ (V3 x y z)        = V3 x (y+n) z
   translateBy n Down d c               = translateBy (-n) Up d c
 
-  translateRBy n RLeft v3  = transpose (eulerMatrix (V3 0 n    0)) !* v3
+  translateRBy n RLeft v3  = eulerMatrix (V3 0 n    0) !* v3
   translateRBy n RRight v3 = translateRBy (-n) RLeft v3
   translateRBy n RUp v3    = eulerMatrix (V3 n    0    0) !* v3
   translateRBy n RDown v3 = translateRBy (-n) RUp v3
@@ -251,8 +251,8 @@ rotateMesh dir selected = do
     translateMesh
     Rotate
     (case dir of
-      RLeft -> V3 0 (-meshStepR) 0
-      RRight -> V3 0 meshStepR 0
+      RLeft -> V3 0 meshStepR 0
+      RRight -> V3 0 (-meshStepR) 0
       RUp -> V3 meshStepR  0    0
       RDown -> V3 (-meshStepR)  0    0
       RLeftR -> V3 0 0 meshStepR
@@ -273,8 +273,8 @@ scaleMesh dir selected = do
     translateMesh
     Scale
     (case dir of
-      ScaleUp -> (V3 (1 + meshStepS) 0 0)
-      ScaleDown -> (V3 (1 - meshStepS) 0 0))
+      ScaleUp -> V3 (1 + meshStepS) 0 0
+      ScaleDown -> V3 (1 - meshStepS) 0 0)
     target
 
 
@@ -286,7 +286,7 @@ translateMesh Move mv mesh =
   Mesh{
     _triangles = map f (_triangles mesh),
     _name = _name mesh,
-    _center = (_center mesh) + mv
+    _center = _center mesh + mv
   }
   where
     f t = t + V3 mv mv mv
