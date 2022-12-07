@@ -155,10 +155,8 @@ rasterize w h fShader (t@(V3 v0 v1 v2), n) = let
     -- apply fragment shader
     color = fShader n
     -- index range of y
-    -- yyd = y2yy (yMin + dy / 2.0)
-    -- yyu = y2yy (yMax - dy / 2.0)
-    yyd = y2yy yMin
-    yyu = y2yy yMax
+    yyd = y2yy (yMin + dy / 2.0)
+    yyu = y2yy (yMax - dy / 2.0)
     -- generate pixels
     in [((xx, yy), interpZ (xx2x xx) (yy2y yy), color) | yy <- [yyu..yyd], let (xxl,xxr) = xxBound yy, xx <- [xxl..xxr]]
 
