@@ -41,7 +41,7 @@ viewMatrix cam = let
     in V4   (V4 mxx mxy mxz vx)
             (V4 myx myy myz vy)
             (V4 mzx mzy mzz vz)
-            (V4 0   0   0   1 )
+            (V4 0   0   0   1.0)
 
 projMatrix :: Float -> Float -> Float -> Float -> M44 Float
 projMatrix fov aspectRatio zNear zFar = let
@@ -50,7 +50,7 @@ projMatrix fov aspectRatio zNear zFar = let
     in V4   (V4 (invTan/aspectRatio) 0       0                0                )
             (V4 0                    invTan  0                0                )
             (V4 0                    0       ((zNear+zFar)*k) (-2*zFar*zNear*k))
-            (V4 0                    0       (-1)             0                )
+            (V4 0                    0       (-1.0)           0                )
 
 transVec3 :: M44 Float -> V3 Float -> V3 Float
 transVec3 m (V3 x y z) = let
@@ -86,6 +86,7 @@ vertShader cam m = let
     -- trisProj = map (transTriangle projM) trisCamera
     -- in zip trisProj ns
     in [(transTriangle projM tri, normal) | tri <- trisCamera, let normal = getNorm tri, (tri ^. _x) `dot` normal <= 0]
+    -- in [(transTriangle projM tri, normal) | tri <- trisCamera, let normal = getNorm tri]
 
 fragShader :: V3 Float -> V3 Float -> Char
 fragShader light n = let
@@ -100,14 +101,20 @@ perspectInterp (V3 z0 z1 z2) (V3 u v w) (V3 p0 p1 p2) = let
     a = u / z0
     b = v / z1
     c = w / z2
-    zn = 1 / (a + b + c)
+    zn = 1.0 / (a + b + c)
     in zn * (a * p0 + b * p1 + c * p2)
 
-berycentric2D :: Float -> Float -> V3 (V3 Float) -> V3 Float
-berycentric2D x y (V3 (V3 x0 y0 _) (V3 x1 y1 _) (V3 x2 y2 _)) = let
+-- berycentric2D :: Float -> Float -> V3 (V3 Float) -> V3 Float
+-- berycentric2D x y (V3 (V3 x0 y0 _) (V3 x1 y1 _) (V3 x2 y2 _)) = let
+--     u = (x*(y1-y2) + y*(x2-x1) + x1*y2 - x2*y1) / (x0*(y1-y2) + (x2-x1)*y0 + x1*y2 - x2*y1)
+--     v = (x*(y2-y0) + y*(x0-x2) + x2*y0 - x0*y2) / (x1*(y2-y0) + (x0-x2)*y1 + x2*y0 - x0*y2)
+--     w = 1.0 - u - v
+--     in V3 u v w
+barycentric2D :: Float -> Float -> Float -> Float -> Float -> Float -> Float -> Float -> V3 Float
+barycentric2D x y x0 y0 x1 y1 x2 y2 = let
     u = (x*(y1-y2) + y*(x2-x1) + x1*y2 - x2*y1) / (x0*(y1-y2) + (x2-x1)*y0 + x1*y2 - x2*y1)
     v = (x*(y2-y0) + y*(x0-x2) + x2*y0 - x0*y2) / (x1*(y2-y0) + (x0-x2)*y1 + x2*y0 - x0*y2)
-    w = 1 - u - v
+    w = 1.0 - u - v
     in V3 u v w
 
 -- scan line algorithm
@@ -150,8 +157,9 @@ rasterize w h fShader (t@(V3 v0 v1 v2), n) = let
     -- perspective-correct interpolation
     interpZ :: Float -> Float -> Float
     interpZ x y = let
-        beryCoord = berycentric2D x y t
-        in perspectInterp (V3 zMin zMid zMax) beryCoord (V3 zMin zMid zMax)
+        -- beryCoord = berycentric2D x y t
+        baryCoord = barycentric2D x y xMin yMin xMid yMid xMax yMax
+        in perspectInterp (V3 zMin zMid zMax) baryCoord (V3 zMin zMid zMax)
     -- apply fragment shader
     color = fShader n
     -- index range of y
@@ -179,7 +187,7 @@ render w h ms cam = elems $ runSTUArray $ do
             then do
                 writeArray zbuf (yy,xx) z
                 writeArray fbuf (yy,xx) c
-                -- writeArray fbuf (yy,xx) (intToDigit (round ((1-z) * 8) `mod` 16))
+                -- writeArray fbuf (yy,xx) (intToDigit (round ((1-z) * 101) `mod` 16))
             else do return ()
         ) pixels
     forM_ [0..h-1] $ \j -> do
