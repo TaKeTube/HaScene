@@ -64,11 +64,11 @@ transTriangle :: M44 Float -> Triangle -> Triangle
 transTriangle mvpM (V3 v0 v1 v2) =
     V3 (transPoint mvpM v0) (transPoint mvpM v1) (transPoint mvpM v2)
 
-faceCulling :: [(Triangle, V3 Float)] -> [(Triangle, V3 Float)]
--- faceCulling ts = let
---     -- isOut (_, V3 _ _ z) = z > 0
---     in filter isOut ts
-faceCulling ts = ts
+-- faceCulling :: [(Triangle, V3 Float)] -> [(Triangle, V3 Float)]
+-- -- faceCulling ts = let
+-- --     -- isOut (_, V3 _ _ z) = z > 0
+-- --     in filter isOut ts
+-- faceCulling ts = ts
 
 vertShader :: Camera -> Mesh -> [(Triangle, V3 Float)]
 vertShader cam m = let
@@ -81,10 +81,11 @@ vertShader cam m = let
 
     trisCamera = filter isFront $ map (transTriangle viewM) tris
     -- compute norm at camera space
-    ns = map (normalize.getNorm) trisCamera
+    -- ns = map (normalize.getNorm) trisCamera
     -- projection
-    trisProj = map (transTriangle projM) trisCamera
-    in zip trisProj ns
+    -- trisProj = map (transTriangle projM) trisCamera
+    -- in zip trisProj ns
+    in [(transTriangle projM tri, normal) | tri <- trisCamera, let normal = getNorm tri, (tri ^. _x) `dot` normal <= 0]
 
 fragShader :: V3 Float -> V3 Float -> Char
 fragShader light n = let
@@ -170,7 +171,8 @@ render w h ms cam = elems $ runSTUArray $ do
     let viewM = viewMatrix cam
     let light' = normalize $ transVec3 viewM light
     -- rasterize triangles
-    let pixels = concatMap (rasterize w h (fragShader light')) $ faceCulling $ concatMap (vertShader cam) ms
+    -- let pixels = concatMap (rasterize w h (fragShader light')) $ faceCulling $ concatMap (vertShader cam) ms
+    let pixels = concatMap (rasterize w h (fragShader light')) $ concatMap (vertShader cam) ms
     mapM_ (\((xx, yy), z, c) -> do
             z0 <- readArray zbuf (yy,xx)
             if z >= z0 && z <= 1.0
