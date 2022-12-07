@@ -30,9 +30,7 @@ unitTest ::  Score -> TestTree
 unitTest sc = testGroup "WhilePlus" 
   [ 
     runTest (SC.eulerMatrix,  (V3 0 0 0), SC.indentityMatrix, 0, "Euler Matrix calc"),
-    runTest (SC.eulerMatrix,  (V3 1 1 1), SC.mat111, 0, "Euler Matrix calc"),
     runTest (SC.eulerMatrix,  (V3 0 2 0), SC.mat020, 0, "Euler Matrix calc"),
-    runTest (SC.eulerMatrix,  (V3 0 0 1), SC.mat001, 0, "Euler Matrix calc"),
     runTest ((\_ -> (foldl SC.updatevf ([],[]) [["v","0","0","0"]])),  (), ([(0.0,0.0,0.0)],[]), 0, "vertex parse"),
     runTest ((\_ -> (foldl SC.updatevf ([],[]) [["v","1","0","1"]])),  (), ([(1.0,0.0,1.0)],[]), 0, "vertex parse"),
     runTest ((\_ -> (foldl SC.updatevf ([],[]) [["v","0","0","0"],["v","1","0","1"]])),  (), ([(1.0,0.0,1.0),(0.0,0.0,0.0)],[]), 0, "multi vertex parse"),
