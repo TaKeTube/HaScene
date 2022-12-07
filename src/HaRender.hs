@@ -126,9 +126,11 @@ rasterize w h fShader (t@(V3 v0 v1 v2), n) = let
     -- continious coord <-> discrete coord
     dx = 1.0 / int2Float w
     dy = 1.0 / int2Float h
-    x2xx x = max 0 $ min (w - 1) $ floor ((x + 1) * 0.5 / dx)
+    -- x2xx x = max 0 $ min (w - 1) $ floor ((x + 1) * 0.5 / dx)
+    x2xx x = floor ((x + 1) * 0.5 / dx)
     -- y2yy y = max 0 $ min (h - 1) $ floor ((y + 1) * 0.5 / dy)
-    y2yy y = max 0 $ min (h - 1) $ floor ((1 - y) * 0.5 / dy)
+    -- y2yy y = max 0 $ min (h - 1) $ floor ((1 - y) * 0.5 / dy)
+    y2yy y = floor ((1 - y) * 0.5 / dy)
     xx2x :: Int -> Float
     xx2x xx = dx * (int2Float xx + 0.5) * 2.0 - 1.0
     yy2y :: Int -> Float
@@ -166,7 +168,8 @@ rasterize w h fShader (t@(V3 v0 v1 v2), n) = let
     yyd = y2yy (yMin + dy / 2.0)
     yyu = y2yy (yMax - dy / 2.0)
     -- generate pixels
-    in [((xx, yy), interpZ (xx2x xx) (yy2y yy), color) | yy <- [yyu..yyd], let (xxl,xxr) = xxBound yy, xx <- [xxl..xxr]]
+    in [((xx, yy), interpZ (xx2x xx) (yy2y yy), color) | yy <- [yyu..yyd], yy < h, yy >= 0, 
+                             let (xxl,xxr) = xxBound yy, xx <- [xxl..xxr], xx < w, xx >= 0]
 
 render :: Int -> Int -> [Mesh] -> Camera -> String
 render w h ms cam = elems $ runSTUArray $ do
